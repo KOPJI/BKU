@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, where, limit } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { CircleAlert, CirclePlus, Loader, Search, Upload } from 'lucide-react';
+import { CircleAlert, CirclePlus, Loader, Search } from 'lucide-react';
 
 interface Transaksi {
   id: string;
@@ -35,117 +35,60 @@ const PendapatanPage = () => {
     jumlah: '',
   });
   const [error, setError] = useState('');
-  const [indexError, setIndexError] = useState('');
+  const [indexError] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [totalPendapatan, setTotalPendapatan] = useState(0);
 
   const fetchTransaksi = async () => {
+    if (!auth.currentUser) {
+      // Error handling tanpa console log
+      return;
+    }
+
     setLoading(true);
-    setError('');
-    setIndexError('');
     try {
-      // Check if user is authenticated
-      if (!auth.currentUser) {
-        console.error("User not authenticated");
-        setError('Anda harus login terlebih dahulu untuk mengakses data');
-        setLoading(false);
-        return;
-      }
+      // Query untuk mendapatkan transaksi
+      let transaksiData: Transaksi[] = [];
       
-      // Try with the complex query first (might require index)
       try {
         const q = query(
-          collection(db, "transaksi"), 
+          collection(db, "transaksi"),
           where("jenis", "==", "pemasukan"),
-          orderBy("tanggal", "desc")
+          orderBy("tanggal", "desc"),
+          orderBy("__name__", "desc")
         );
-        
-        console.log("Attempting to fetch pendapatan with complex query");
         const querySnapshot = await getDocs(q);
-        
-        const transaksiData: Transaksi[] = [];
         querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          transaksiData.push({
-            id: doc.id,
-            tanggal: data.tanggal,
-            keterangan: data.keterangan,
-            kategori: data.kategori,
-            jenis: data.jenis,
-            jumlah: data.jumlah
-          });
+          transaksiData.push({ id: doc.id, ...doc.data() } as Transaksi);
         });
-        
-        setTransaksi(transaksiData);
       } catch (indexErr: any) {
-        // Check if this is an index error
-        if (indexErr?.code === 'failed-precondition' && indexErr?.message?.includes('index')) {
-          console.warn("Index error:", indexErr.message);
-          
-          // Extract the index creation URL if available
-          const indexUrl = extractIndexUrl(indexErr.message);
-          setIndexError(indexUrl || '');
-          
-          // Fallback to a simpler query that doesn't require the index
-          console.log("Falling back to simpler query without index");
-          const fallbackQuery = query(
-            collection(db, "transaksi"),
-            limit(100) // Get more documents to filter client-side
-          );
-          
-          const fallbackSnapshot = await getDocs(fallbackQuery);
-          
-          // Filter the results client-side
-          const transaksiData: Transaksi[] = [];
-          fallbackSnapshot.forEach((doc) => {
-            const data = doc.data();
-            // Only include pemasukan entries
-            if (data.jenis === 'pemasukan') {
-              transaksiData.push({
-                id: doc.id,
-                tanggal: data.tanggal,
-                keterangan: data.keterangan,
-                kategori: data.kategori,
-                jenis: data.jenis,
-                jumlah: data.jumlah
-              });
-            }
-          });
-          
-          // Sort by tanggal (descending) client-side
-          transaksiData.sort((a, b) => {
-            return new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime();
-          });
-          
-          setTransaksi(transaksiData);
-        } else {
-          // If it's not an index error, rethrow to be caught by the outer catch
-          throw indexErr;
-        }
+        // Fallback query tanpa index
+        const q = query(
+          collection(db, "transaksi"),
+          where("jenis", "==", "pemasukan")
+        );
+        const querySnapshot = await getDocs(q);
+        transaksiData = querySnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Transaksi))
+          .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
       }
-    } catch (error: any) {
-      console.error("Error mengambil data pendapatan:", error);
-      if (error?.code === 'permission-denied') {
-        setError('Anda tidak memiliki izin untuk mengakses data pendapatan. Silakan login ulang atau hubungi administrator.');
-      } else {
-        setError('Gagal memuat data pendapatan. Silakan coba lagi nanti.');
-      }
+
+      setTransaksi(transaksiData);
+      
+      // Hitung total
+      const total = transaksiData.reduce((sum, t) => sum + t.jumlah, 0);
+      setTotalPendapatan(total);
+    } catch (error) {
+      // Error handling tanpa console log
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper function to extract index URL from error message
-  const extractIndexUrl = (errorMessage: string): string | null => {
-    const urlMatch = errorMessage.match(/https:\/\/console\.firebase\.google\.com[^\s]+/);
-    return urlMatch ? urlMatch[0] : null;
-  };
-
   useEffect(() => {
-    // Confirm we have authentication before fetching data
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        console.log("Fetching pendapatan data for user:", user.uid);
         fetchTransaksi();
       } else {
         setLoading(false);
@@ -174,7 +117,6 @@ const PendapatanPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setSubmitLoading(true);
 
     const kategori = formData.kategori;
@@ -206,23 +148,15 @@ const PendapatanPage = () => {
         return;
       }
 
-      console.log("Attempting to add pendapatan to Firestore", {
-        userId: auth.currentUser.uid,
-        amount: numericJumlah,
-        kategori: kategori
-      });
-
       await addDoc(collection(db, "transaksi"), {
         tanggal: formData.tanggal,
         keterangan: keterangan,
         kategori: kategori,
-        jenis: "pemasukan", // Always set as income
+        jenis: "pemasukan",
         jumlah: numericJumlah,
         createdBy: auth.currentUser.uid,
         createdAt: serverTimestamp()
       });
-
-      console.log("Pendapatan added successfully");
 
       // Reset form
       setFormData({
@@ -235,10 +169,9 @@ const PendapatanPage = () => {
       
       setIsFormOpen(false);
       fetchTransaksi(); // Refresh data
-    } catch (error: any) {
-      console.error("Error menambahkan transaksi:", error);
-      if (error?.code === 'permission-denied') {
-        setError('Anda tidak memiliki izin untuk menambahkan pendapatan. Silakan login ulang atau hubungi administrator.');
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('permission-denied')) {
+        setError('Anda tidak memiliki izin untuk menambahkan transaksi. Silakan login ulang atau hubungi administrator.');
       } else {
         setError('Gagal menyimpan transaksi. Silakan coba lagi.');
       }
@@ -425,51 +358,59 @@ const PendapatanPage = () => {
           <span className="ml-2 text-gray-700">Memuat data pendapatan...</span>
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          {filteredTransaksi.length > 0 ? (
-            <div className="overflow-x-auto -mx-6 -my-4 sm:mx-0 sm:my-0">
-              <table className="min-w-full bg-white">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tanggal
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kategori
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Keterangan
-                    </th>
-                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jumlah
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredTransaksi.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm text-gray-900 whitespace-nowrap">
-                        {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-900">
-                        {item.kategori || 'Umum'}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-900">
-                        {item.keterangan}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-right whitespace-nowrap font-medium text-green-600">
-                        {formatRupiah(item.jumlah)}
-                      </td>
+        <div className="space-y-6">
+          {/* Total Pendapatan Card */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">Total Pendapatan</h2>
+            <p className="text-2xl font-bold text-green-600">{formatRupiah(totalPendapatan)}</p>
+          </div>
+
+          <div className="card overflow-hidden">
+            {filteredTransaksi.length > 0 ? (
+              <div className="overflow-x-auto -mx-6 -my-4 sm:mx-0 sm:my-0">
+                <table className="min-w-full bg-white">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tanggal
+                      </th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Kategori
+                      </th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Keterangan
+                      </th>
+                      <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Jumlah
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              {searchQuery ? 'Tidak ada pendapatan yang cocok dengan pencarian' : 'Belum ada pendapatan tercatat'}
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredTransaksi.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4 text-sm text-gray-900 whitespace-nowrap">
+                          {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900">
+                          {item.kategori || 'Umum'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900">
+                          {item.keterangan}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-right whitespace-nowrap font-medium text-green-600">
+                          {formatRupiah(item.jumlah)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                {searchQuery ? 'Tidak ada pendapatan yang cocok dengan pencarian' : 'Belum ada pendapatan tercatat'}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

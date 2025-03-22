@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { Download, Loader, CirclePlus, Search, Upload } from 'lucide-react';
 
 interface Transaksi {
@@ -33,19 +33,12 @@ const TransaksiPage = () => {
       
       const transaksiData: Transaksi[] = [];
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        transaksiData.push({
-          id: doc.id,
-          tanggal: data.tanggal,
-          keterangan: data.keterangan,
-          jenis: data.jenis,
-          jumlah: data.jumlah
-        });
+        transaksiData.push({ id: doc.id, ...doc.data() } as Transaksi);
       });
       
       setTransaksi(transaksiData);
     } catch (error) {
-      console.error("Error mengambil data transaksi:", error);
+      // Error handling tanpa console log
     } finally {
       setLoading(false);
     }
@@ -83,6 +76,12 @@ const TransaksiPage = () => {
     }
 
     try {
+      if (!auth.currentUser) {
+        setError('Sesi login telah berakhir. Silakan login kembali.');
+        setSubmitLoading(false);
+        return;
+      }
+
       const numericJumlah = parseFloat(formData.jumlah.replace(/[^\d]/g, ''));
       
       if (isNaN(numericJumlah) || numericJumlah <= 0) {
@@ -91,26 +90,26 @@ const TransaksiPage = () => {
         return;
       }
 
-      await addDoc(collection(db, "transaksi"), {
+      const transaksiData = {
         tanggal: formData.tanggal,
         keterangan: formData.keterangan,
         jenis: formData.jenis,
         jumlah: numericJumlah,
-        timestamp: serverTimestamp()
-      });
+        createdBy: auth.currentUser.uid,
+        createdAt: serverTimestamp()
+      };
 
-      // Reset form
+      await addDoc(collection(db, "transaksi"), transaksiData);
       setFormData({
         tanggal: new Date().toISOString().split('T')[0],
         keterangan: '',
         jenis: 'pemasukan',
         jumlah: '',
       });
-      
       setIsFormOpen(false);
-      fetchTransaksi(); // Refresh data
+      await fetchTransaksi();
     } catch (error) {
-      console.error("Error menambahkan transaksi:", error);
+      // Error handling tanpa console log
       setError('Gagal menyimpan transaksi. Silakan coba lagi.');
     } finally {
       setSubmitLoading(false);

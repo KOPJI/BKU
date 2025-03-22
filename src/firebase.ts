@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDO3FIJxdisijuaWYyS0cVpfg-gYfTNvIU",
@@ -16,15 +16,6 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-// Add this line to log authentication state changes (for debugging)
-auth.onAuthStateChanged((user) => {
-  if (user) {
-    console.log('User is signed in with UID:', user.uid);
-  } else {
-    console.log('User is signed out');
-  }
-});
-
 // Optionally connect to emulators when in development environment
 if (import.meta.env.DEV) {
   try {
@@ -32,7 +23,7 @@ if (import.meta.env.DEV) {
     // connectAuthEmulator(auth, 'http://localhost:9099');
     // connectFirestoreEmulator(db, 'localhost', 8080);
   } catch (error) {
-    console.error("Error connecting to emulators:", error);
+    // Error handling tanpa console log
   }
 }
 

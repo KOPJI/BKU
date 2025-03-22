@@ -62,7 +62,7 @@ const Dashboard = () => {
         setTotalPengeluaran(totalKeluar);
         setSaldo(totalMasuk - totalKeluar);
       } catch (error) {
-        console.error("Error mengambil data:", error);
+        // Error handling tanpa console log
       } finally {
         setLoading(false);
       }

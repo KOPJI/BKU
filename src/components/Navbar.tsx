@@ -14,7 +14,7 @@ const Navbar = () => {
       await signOut(auth);
       navigate('/login');
     } catch (error) {
-      console.error('Error saat logout:', error);
+      // Error handling tanpa console log
     }
   };
 

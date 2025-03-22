@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../firebase';
-import { LogIn } from 'lucide-react';
+import { LogIn, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,6 +17,8 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // Set persistence based on remember me checkbox
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       setError('Login gagal: ' + (err.message || 'Periksa email dan password Anda'));
@@ -64,15 +68,37 @@ const Login = () => {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                className="input-field pr-10"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Masukkan password"
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center">
             <input
-              id="password"
-              type="password"
-              required
-              className="input-field"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Masukkan password"
+              id="remember-me"
+              type="checkbox"
+              className="h-4 w-4 text-[#ff5722] focus:ring-[#ff5722] border-gray-300 rounded"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
             />
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+              Ingat Saya
+            </label>
           </div>
 
           <div>
@@ -95,7 +121,7 @@ const Login = () => {
 
         <div className="mt-8 text-center text-sm text-gray-600">
           <p>Aplikasi Buku Kas Umum untuk KARTA CUP V</p>
-          <p className="mt-1">© 2023 KARTA CUP V</p>
+          <p className="mt-1">© 2025 KARTA CUP V</p>
         </div>
       </div>
     </div>

@@ -26,18 +26,15 @@ const LaporanPage = () => {
   });
 
   const fetchTransaksi = async () => {
+    if (!auth.currentUser) {
+      // Error handling tanpa console log
+      return;
+    }
+
     setLoading(true);
     setError('');
     
     try {
-      // Check if user is authenticated
-      if (!auth.currentUser) {
-        console.error("User not authenticated");
-        setError('Anda harus login terlebih dahulu untuk mengakses data');
-        setLoading(false);
-        return;
-      }
-      
       let startDate = new Date(selectedDate);
       let endDate = new Date(selectedDate);
       
@@ -69,8 +66,6 @@ const LaporanPage = () => {
         where("tanggal", "<=", endDateStr),
         orderBy("tanggal", "desc")
       );
-      
-      console.log(`Fetching ${currentPeriod} report from ${startDateStr} to ${endDateStr}`);
       
       const querySnapshot = await getDocs(q);
       
@@ -104,14 +99,7 @@ const LaporanPage = () => {
       });
       
     } catch (error: any) {
-      console.error(`Error mengambil data laporan ${currentPeriod}:`, error);
-      if (error?.code === 'permission-denied') {
-        setError('Anda tidak memiliki izin untuk mengakses data laporan. Silakan login ulang atau hubungi administrator.');
-      } else if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
-        setError('Dibutuhkan pengaturan indeks database. Silakan hubungi administrator untuk mengaktifkan fitur laporan.');
-      } else {
-        setError(`Gagal memuat data laporan ${currentPeriod}. Silakan coba lagi nanti.`);
-      }
+      // Error handling tanpa console log
     } finally {
       setLoading(false);
     }
@@ -121,7 +109,6 @@ const LaporanPage = () => {
     // Confirm we have authentication before fetching data
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        console.log(`Fetching ${currentPeriod} report data for user:`, user.uid);
         fetchTransaksi();
       } else {
         setLoading(false);

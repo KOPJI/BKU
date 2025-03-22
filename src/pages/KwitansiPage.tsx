@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { CirclePlus, FileText, Loader, Printer, Search } from 'lucide-react';
 
@@ -72,7 +72,6 @@ const KwitansiPage = () => {
     // Confirm we have authentication before fetching data
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        console.log("Fetching kwitansi data for user:", user.uid);
         fetchKwitansi();
       } else {
         setLoading(false);
@@ -202,11 +201,8 @@ const KwitansiPage = () => {
         createdAt: serverTimestamp()
       };
 
-      console.log("Attempting to add kwitansi to Firestore:", kwitansiData);
-
       // Tambahkan ke firestore
       const kwitansiRef = await addDoc(collection(db, "kwitansi"), kwitansiData);
-      console.log("Kwitansi added successfully with ID:", kwitansiRef.id);
 
       // Tambahkan juga ke transaksi sebagai pendapatan
       await addDoc(collection(db, "transaksi"), {
@@ -232,7 +228,6 @@ const KwitansiPage = () => {
       setIsFormOpen(false);
       fetchKwitansi(); // Refresh data
     } catch (error) {
-      console.error("Error menambahkan kwitansi:", error);
       if (error instanceof Error && error.message.includes('permission-denied')) {
         setError('Anda tidak memiliki izin untuk menambahkan kwitansi. Silakan login ulang atau hubungi administrator.');
       } else {
@@ -462,7 +457,7 @@ const KwitansiPage = () => {
             
             <div class="header">
               <div class="logo-container">
-                <img src="https://mocha-cdn.com/0195bfc4-06ff-71af-bb75-b8fd467c9d72/logo-karta-cup-v.png" alt="Logo KARTA CUP V" class="logo">
+                <img src="/images/logo-karta-cup-v.png" alt="Logo KARTA CUP V" class="logo">
               </div>
               <div class="title">KWITANSI PEMBAYARAN</div>
               <div class="subtitle">KARTA CUP V - TOURNAMENT</div>
@@ -505,7 +500,9 @@ const KwitansiPage = () => {
               </div>
               <div class="signature">
                 <div>Penerima,</div>
-                <div class="sign-area"></div>
+                <div class="sign-area">
+                  <img src="/images/ttd.png" alt="Tanda Tangan" style="width: 100px; height: auto; margin: -30px auto 0; display: block;" />
+                </div>
                 <div>Panitia KARTA CUP V</div>
               </div>
             </div>
@@ -522,7 +519,7 @@ const KwitansiPage = () => {
             
             <div class="header">
               <div class="logo-container">
-                <img src="https://mocha-cdn.com/0195bfc4-06ff-71af-bb75-b8fd467c9d72/logo-karta-cup-v.png" alt="Logo KARTA CUP V" class="logo">
+                <img src="/images/logo-karta-cup-v.png" alt="Logo KARTA CUP V" class="logo">
               </div>
               <div class="title">KWITANSI PEMBAYARAN</div>
               <div class="subtitle">KARTA CUP V - TOURNAMENT</div>
@@ -565,7 +562,9 @@ const KwitansiPage = () => {
               </div>
               <div class="signature">
                 <div>Penerima,</div>
-                <div class="sign-area"></div>
+                <div class="sign-area">
+                  <img src="/images/ttd.png" alt="Tanda Tangan" style="width: 100px; height: auto; margin: -30px auto 0; display: block;" />
+                </div>
                 <div>Panitia KARTA CUP V</div>
               </div>
             </div>
