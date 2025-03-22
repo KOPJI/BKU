@@ -1,0 +1,149 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fungsi bantuan umum
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      // Ganti dengan daftar admin Anda yang sebenarnya atau koleksi admins
+      return request.auth.uid in ['admin_uid_1', 'admin_uid_2'] || 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isValidTimestamp() {
+      return request.time is timestamp;
+    }
+    
+    // Fungsi validasi untuk dokumen kwitansi
+    function isValidKwitansi() {
+      let requiredFields = ['nomor', 'tanggal', 'namaTim', 'nominal', 'keterangan', 'createdBy'];
+      let data = request.resource.data;
+      
+      return data.keys().hasAll(requiredFields) &&
+             data.nomor is string && data.nomor.size() > 0 &&
+             data.tanggal is string && data.tanggal.size() > 0 &&
+             data.namaTim is string && data.namaTim.size() > 0 &&
+             data.nominal is number && data.nominal > 0 &&
+             data.keterangan is string &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+    
+    // Fungsi validasi untuk dokumen transaksi
+    function isValidTransaksi() {
+      let requiredFields = ['tanggal', 'keterangan', 'jenis', 'jumlah', 'createdBy'];
+      let data = request.resource.data;
+      
+      return data.keys().hasAll(requiredFields) &&
+             data.tanggal is string && data.tanggal.size() > 0 &&
+             data.keterangan is string && data.keterangan.size() > 0 &&
+             data.jenis is string && (data.jenis == 'pemasukan' || data.jenis == 'pengeluaran') &&
+             data.jumlah is number && data.jumlah > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+    
+    // Default deny all - praktik keamanan terbaik
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Aturan untuk koleksi kwitansi
+    match /kwitansi/{kwitansiId} {
+      // Semua pengguna terautentikasi dapat membaca dokumen kwitansi
+      allow read: if isAuthenticated();
+      
+      // Hanya pengguna terautentikasi yang dapat membuat kwitansi baru dengan validasi
+      allow create: if isAuthenticated() && isValidKwitansi();
+      
+      // Hanya pemilik atau admin yang dapat memperbarui kwitansi
+      allow update: if isAuthenticated() && 
+                     (isOwner(resource.data.createdBy) || isAdmin()) && 
+                     isValidKwitansi();
+      
+      // Hanya admin yang dapat menghapus kwitansi
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    // Aturan untuk koleksi transaksi
+    match /transaksi/{transaksiId} {
+      // Semua pengguna terautentikasi dapat membaca transaksi
+      allow read: if isAuthenticated();
+      
+      // Hanya pengguna terautentikasi yang dapat membuat transaksi baru dengan validasi
+      allow create: if isAuthenticated() && isValidTransaksi();
+      
+      // Hanya pemilik atau admin yang dapat memperbarui transaksi
+      allow update: if isAuthenticated() && 
+                     (isOwner(resource.data.createdBy) || isAdmin()) && 
+                     isValidTransaksi();
+      
+      // Hanya admin yang dapat menghapus transaksi
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    // Aturan untuk koleksi users - jika aplikasi menyimpan data tambahan pengguna
+    match /users/{userId} {
+      // Pengguna dapat membaca profil mereka sendiri
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Pengguna dapat membuat dan memperbarui profil mereka sendiri
+      allow create, update: if isAuthenticated() && isOwner(userId);
+      
+      // Hanya admin yang dapat menghapus pengguna
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    // Aturan untuk koleksi admins - untuk manajemen admin
+    match /admins/{userId} {
+      // Hanya admin yang dapat membaca daftar admin
+      allow read: if isAuthenticated() && isAdmin();
+      
+      // Hanya admin yang dapat mengelola admin lain
+      allow write: if isAuthenticated() && isAdmin();
+    }
+    
+    // Aturan untuk koleksi settings - jika diperlukan untuk pengaturan aplikasi
+    match /settings/{settingId} {
+      // Semua pengguna terautentikasi dapat membaca pengaturan
+      allow read: if isAuthenticated();
+      
+      // Hanya admin yang dapat mengubah pengaturan
+      allow write: if isAuthenticated() && isAdmin();
+    }
+    
+    // Aturan untuk koleksi tim - jika diperlukan untuk manajemen tim KARTA CUP
+    match /tim/{timId} {
+      // Semua pengguna terautentikasi dapat membaca data tim
+      allow read: if isAuthenticated();
+      
+      // Hanya admin yang dapat mengelola data tim
+      allow write: if isAuthenticated() && isAdmin();
+    }
+    
+    // Aturan untuk koleksi reports - jika aplikasi memiliki fitur laporan
+    match /reports/{reportId} {
+      // Semua pengguna terautentikasi dapat membaca laporan
+      allow read: if isAuthenticated();
+      
+      // Hanya admin yang dapat membuat, mengubah, atau menghapus laporan
+      allow write: if isAuthenticated() && isAdmin();
+    }
+    
+    // Aturan untuk koleksi audit - untuk melacak aktivitas penting (jika ada)
+    match /audit/{auditId} {
+      // Hanya admin yang dapat membaca log audit
+      allow read: if isAuthenticated() && isAdmin();
+      
+      // Semua pengguna terautentikasi dapat membuat entri audit (tetapi tidak mengubah)
+      allow create: if isAuthenticated();
+      
+      // Tidak ada yang dapat mengubah atau menghapus log audit (untuk keamanan)
+      allow update, delete: if false;
+    }
+  }
+}

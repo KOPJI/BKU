@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #ff5722; /* Oranye - Sepak bola */
+  --color-secondary: #2196f3; /* Biru - Kesenian */
+  --color-accent: #ffeb3b; /* Kuning - Aksen cerah */
+  --color-background: #f5f5f5;
+  --color-text: #333333;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  margin: 0;
+  padding: 0;
+}
+
+.btn-primary {
+  @apply bg-[#ff5722] hover:bg-[#e64a19] text-white font-bold py-2 px-4 rounded flex items-center justify-center;
+}
+
+.btn-secondary {
+  @apply bg-[#2196f3] hover:bg-[#1976d2] text-white font-bold py-2 px-4 rounded flex items-center justify-center;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-md p-6;
+}
+
+.input-field {
+  @apply w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#ff5722];
+}
+
+/* Responsive table improvements */
+@media (max-width: 640px) {
+  .card {
+    @apply p-4;
+  }
+  
+  table {
+    @apply w-full;
+  }
+  
+  th, td {
+    @apply p-2 text-xs;
+  }
+}
+
+/* Fixed modals for mobile */
+.fixed.inset-0.flex.items-center.justify-center.z-50 {
+  @apply p-2;
+}
+
+/* Better form spacing on mobile */
+@media (max-width: 640px) {
+  form .mb-4, form .mb-6 {
+    @apply mb-3;
+  }
+  
+  label {
+    @apply mb-1;
+  }
+  
+  .input-field {
+    @apply py-2;
+  }
+}
+
+/* Improved buttons for mobile */
+@media (max-width: 640px) {
+  .btn-primary, .btn-secondary {
+    @apply py-2 px-3 text-sm;
+  }
+}
