@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { CirclePlus, Loader, Search, Squircle } from 'lucide-react';
+import { getTodayIndonesia, formatDateIndonesia } from '../utils/dateHelper';
 
 interface Transaksi {
   id: string;
@@ -32,9 +33,10 @@ const PengeluaranPage = () => {
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: getTodayIndonesia(),
     kategori: kategoriPengeluaran[0],
     keteranganLainnya: '',
+    jenis: 'pengeluaran',
     jumlah: '',
   });
   const [error, setError] = useState('');
@@ -43,56 +45,62 @@ const PengeluaranPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [totalPengeluaran, setTotalPengeluaran] = useState(0);
 
-  const fetchTransaksi = async () => {
-    if (!auth.currentUser) {
-      // Error handling tanpa console log
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Query untuk mendapatkan transaksi
-      let transaksiData: Transaksi[] = [];
-      
-      try {
-        const q = query(
-          collection(db, "transaksi"),
-          where("jenis", "==", "pengeluaran"),
-          orderBy("tanggal", "desc"),
-          orderBy("__name__", "desc")
-        );
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-          transaksiData.push({ id: doc.id, ...doc.data() } as Transaksi);
-        });
-      } catch (indexErr: any) {
-        // Fallback query tanpa index
-        const q = query(
-          collection(db, "transaksi"),
-          where("jenis", "==", "pengeluaran")
-        );
-        const querySnapshot = await getDocs(q);
-        transaksiData = querySnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Transaksi))
-          .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-      }
-
-      setTransaksi(transaksiData);
-      
-      // Hitung total
-      const total = transaksiData.reduce((sum, t) => sum + t.jumlah, 0);
-      setTotalPengeluaran(total);
-    } catch (error) {
-      // Error handling tanpa console log
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        fetchTransaksi();
+        // Setup realtime listener
+        const setupRealtimeListener = () => {
+          try {
+            const q = query(
+              collection(db, "transaksi"),
+              where("jenis", "==", "pengeluaran"),
+              orderBy("tanggal", "desc"),
+              orderBy("__name__", "desc")
+            );
+
+            const unsubscribeSnapshot = onSnapshot(q, (querySnapshot) => {
+              const transaksiData: Transaksi[] = [];
+              querySnapshot.forEach((doc) => {
+                transaksiData.push({ id: doc.id, ...doc.data() } as Transaksi);
+              });
+              setTransaksi(transaksiData);
+              
+              // Hitung total
+              const total = transaksiData.reduce((sum, t) => sum + t.jumlah, 0);
+              setTotalPengeluaran(total);
+              setLoading(false);
+            }, (_) => {
+              // Handle error dengan fallback query
+              const fallbackQuery = query(
+                collection(db, "transaksi"),
+                where("jenis", "==", "pengeluaran")
+              );
+
+              const unsubscribeFallback = onSnapshot(fallbackQuery, (snapshot) => {
+                const transaksiData = snapshot.docs
+                  .map(doc => ({ id: doc.id, ...doc.data() } as Transaksi))
+                  .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+                
+                setTransaksi(transaksiData);
+                const total = transaksiData.reduce((sum, t) => sum + t.jumlah, 0);
+                setTotalPengeluaran(total);
+                setLoading(false);
+              });
+
+              return () => unsubscribeFallback();
+            });
+
+            return unsubscribeSnapshot;
+          } catch (error) {
+            setLoading(false);
+            return () => {};
+          }
+        };
+
+        const unsubscribeFirestore = setupRealtimeListener();
+        return () => {
+          unsubscribeFirestore();
+        };
       } else {
         setLoading(false);
         setError('Anda harus login terlebih dahulu untuk mengakses data');
@@ -100,6 +108,24 @@ const PengeluaranPage = () => {
     });
     
     return () => unsubscribe();
+  }, []);
+
+  // Effect untuk memperbarui tanggal saat form dibuka
+  useEffect(() => {
+    if (isFormOpen) {
+      setFormData(prev => ({
+        ...prev,
+        tanggal: getTodayIndonesia()
+      }));
+    }
+  }, [isFormOpen]);
+
+  // Effect untuk memperbarui tanggal saat komponen dimount
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      tanggal: getTodayIndonesia()
+    }));
   }, []);
 
   const formatRupiah = (angka: number) => {
@@ -112,10 +138,24 @@ const PengeluaranPage = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    if (name === 'jumlah') {
+      // Hapus semua karakter non-digit
+      const numericValue = value.replace(/[^\d]/g, '');
+      
+      // Format dengan titik sebagai pemisah ribuan
+      const formattedValue = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      
+      setFormData({
+        ...formData,
+        [name]: formattedValue
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,7 +163,6 @@ const PengeluaranPage = () => {
     setSubmitLoading(true);
 
     const kategori = formData.kategori;
-    // Generate keterangan based on kategori
     let keterangan = kategori;
     if (kategori === 'lainnya' && formData.keteranganLainnya) {
       keterangan = formData.keteranganLainnya;
@@ -136,7 +175,6 @@ const PengeluaranPage = () => {
     }
 
     try {
-      // Verify user is authenticated
       if (!auth.currentUser) {
         setError('Sesi login telah berakhir. Silakan login kembali.');
         setSubmitLoading(false);
@@ -163,14 +201,14 @@ const PengeluaranPage = () => {
 
       // Reset form
       setFormData({
-        tanggal: new Date().toISOString().split('T')[0],
+        tanggal: getTodayIndonesia(),
         kategori: kategoriPengeluaran[0],
         keteranganLainnya: '',
+        jenis: 'pengeluaran',
         jumlah: '',
       });
       
       setIsFormOpen(false);
-      fetchTransaksi(); // Refresh data
     } catch (error) {
       if (error instanceof Error && error.message.includes('permission-denied')) {
         setError('Anda tidak memiliki izin untuk menambahkan transaksi. Silakan login ulang atau hubungi administrator.');
@@ -325,7 +363,7 @@ const PengeluaranPage = () => {
                   onChange={handleInputChange}
                   className="input-field"
                   required
-                  placeholder="Contoh: 100000"
+                  placeholder="Contoh: 100.000"
                 />
               </div>
               
@@ -391,7 +429,7 @@ const PengeluaranPage = () => {
                     {filteredTransaksi.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50">
                         <td className="py-3 px-4 text-sm text-gray-900 whitespace-nowrap">
-                          {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                          {formatDateIndonesia(item.tanggal)}
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-900">
                           {item.kategori || 'Umum'}

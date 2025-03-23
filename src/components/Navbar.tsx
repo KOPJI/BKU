@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
-import { ArrowUp10, ChartBar, CircleArrowDown, FileText, House, LogOut, Menu, X } from 'lucide-react';
+import { Receipt, CreditCard, BarChart3, LogOut, FileCheck, Menu, X, ArrowUpCircle, BarChart } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +14,7 @@ const Navbar = () => {
       await signOut(auth);
       navigate('/login');
     } catch (error) {
-      // Error handling tanpa console log
+      console.error('Error logging out:', error);
     }
   };
 
@@ -26,6 +26,10 @@ const Navbar = () => {
     setIsOpen(false);
   };
 
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
+
   return (
     <nav className="bg-gradient-to-r from-[#ff5722] to-[#ff9800] text-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -34,12 +38,11 @@ const Navbar = () => {
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center" onClick={closeMenu}>
                 <img
-                  className="h-10 w-auto mr-2"
-                  src="https://mocha-cdn.com/0195bfc4-06ff-71af-bb75-b8fd467c9d72/logo-karta-cup-v.png"
+                  src="/images/logo-karta-cup-v.png"
                   alt="KARTA CUP V Logo"
+                  className="h-8 w-auto"
                 />
-                <span className="font-bold text-xl hidden sm:inline">BKU KARTA CUP V</span>
-                <span className="font-bold text-xl sm:hidden">BKU</span>
+                <span className="ml-2 text-xl font-semibold text-gray-800">BKU KARTA CUP V</span>
               </Link>
             </div>
             <div className="hidden md:block">
@@ -47,61 +50,73 @@ const Navbar = () => {
                 <Link
                   to="/"
                   className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${
-                    location.pathname === '/'
+                    isActive('/')
                       ? 'bg-[#e64a19] text-white'
                       : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
                   }`}
                   onClick={closeMenu}
                 >
-                  <House size={18} className="mr-1" />
+                  <BarChart3 className="w-4 h-4 mr-2" />
                   Dashboard
                 </Link>
                 <Link
                   to="/pendapatan"
                   className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${
-                    location.pathname === '/pendapatan'
+                    isActive('/pendapatan')
                       ? 'bg-[#e64a19] text-white'
                       : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
                   }`}
                   onClick={closeMenu}
                 >
-                  <ArrowUp10 size={18} className="mr-1" />
+                  <ArrowUpCircle className="w-4 h-4 mr-2" />
                   Pendapatan
                 </Link>
                 <Link
                   to="/pengeluaran"
                   className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${
-                    location.pathname === '/pengeluaran'
+                    isActive('/pengeluaran')
                       ? 'bg-[#e64a19] text-white'
                       : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
                   }`}
                   onClick={closeMenu}
                 >
-                  <CircleArrowDown size={18} className="mr-1" />
+                  <CreditCard className="w-4 h-4 mr-2" />
                   Pengeluaran
                 </Link>
                 <Link
                   to="/kwitansi"
                   className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${
-                    location.pathname === '/kwitansi'
+                    isActive('/kwitansi')
                       ? 'bg-[#e64a19] text-white'
                       : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
                   }`}
                   onClick={closeMenu}
                 >
-                  <FileText size={18} className="mr-1" />
+                  <Receipt className="w-4 h-4 mr-2" />
                   Kwitansi
+                </Link>
+                <Link
+                  to="/tanda-terima-wasit"
+                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${
+                    isActive('/tanda-terima-wasit')
+                      ? 'bg-[#e64a19] text-white'
+                      : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
+                  }`}
+                  onClick={closeMenu}
+                >
+                  <FileCheck className="w-4 h-4 mr-2" />
+                  Tanda Terima Wasit
                 </Link>
                 <Link
                   to="/laporan"
                   className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${
-                    location.pathname === '/laporan'
+                    isActive('/laporan')
                       ? 'bg-[#e64a19] text-white'
                       : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
                   }`}
                   onClick={closeMenu}
                 >
-                  <ChartBar size={18} className="mr-1" />
+                  <BarChart className="w-4 h-4 mr-2" />
                   Laporan
                 </Link>
               </div>
@@ -134,61 +149,73 @@ const Navbar = () => {
             <Link
               to="/"
               className={`block px-3 py-2 rounded-md text-base font-medium flex items-center ${
-                location.pathname === '/'
+                isActive('/')
                   ? 'bg-[#e64a19] text-white'
                   : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
               }`}
               onClick={closeMenu}
             >
-              <House size={18} className="mr-2" />
+              <BarChart3 className="w-4 h-4 mr-2" />
               Dashboard
             </Link>
             <Link
               to="/pendapatan"
               className={`block px-3 py-2 rounded-md text-base font-medium flex items-center ${
-                location.pathname === '/pendapatan'
+                isActive('/pendapatan')
                   ? 'bg-[#e64a19] text-white'
                   : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
               }`}
               onClick={closeMenu}
             >
-              <ArrowUp10 size={18} className="mr-2" />
+              <ArrowUpCircle className="w-4 h-4 mr-2" />
               Pendapatan
             </Link>
             <Link
               to="/pengeluaran"
               className={`block px-3 py-2 rounded-md text-base font-medium flex items-center ${
-                location.pathname === '/pengeluaran'
+                isActive('/pengeluaran')
                   ? 'bg-[#e64a19] text-white'
                   : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
               }`}
               onClick={closeMenu}
             >
-              <CircleArrowDown size={18} className="mr-2" />
+              <CreditCard className="w-4 h-4 mr-2" />
               Pengeluaran
             </Link>
             <Link
               to="/kwitansi"
               className={`block px-3 py-2 rounded-md text-base font-medium flex items-center ${
-                location.pathname === '/kwitansi'
+                isActive('/kwitansi')
                   ? 'bg-[#e64a19] text-white'
                   : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
               }`}
               onClick={closeMenu}
             >
-              <FileText size={18} className="mr-2" />
+              <Receipt className="w-4 h-4 mr-2" />
               Kwitansi
+            </Link>
+            <Link
+              to="/tanda-terima-wasit"
+              className={`block px-3 py-2 rounded-md text-base font-medium flex items-center ${
+                isActive('/tanda-terima-wasit')
+                  ? 'bg-[#e64a19] text-white'
+                  : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
+              }`}
+              onClick={closeMenu}
+            >
+              <FileCheck className="w-4 h-4 mr-2" />
+              Tanda Terima Wasit
             </Link>
             <Link
               to="/laporan"
               className={`block px-3 py-2 rounded-md text-base font-medium flex items-center ${
-                location.pathname === '/laporan'
+                isActive('/laporan')
                   ? 'bg-[#e64a19] text-white'
                   : 'text-white hover:bg-[#e64a19] hover:bg-opacity-75'
               }`}
               onClick={closeMenu}
             >
-              <ChartBar size={18} className="mr-2" />
+              <BarChart className="w-4 h-4 mr-2" />
               Laporan
             </Link>
             <button

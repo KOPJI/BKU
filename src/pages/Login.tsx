@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
+import { useState, useEffect } from 'react';
+import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,7 +10,28 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    // Mengambil nilai rememberMe dari localStorage saat komponen dimuat
+    const saved = localStorage.getItem('rememberMe');
+    return saved ? JSON.parse(saved) : false;
+  });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Menyimpan preferensi rememberMe ke localStorage setiap kali nilainya berubah
+    localStorage.setItem('rememberMe', JSON.stringify(rememberMe));
+  }, [rememberMe]);
+
+  useEffect(() => {
+    // Cek status autentikasi saat komponen dimuat
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigate('/');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,11 +39,39 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Set persistence based on remember me checkbox
+      // Set persistence berdasarkan checkbox "Ingat Saya"
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      
+      // Login dengan email dan password
       await signInWithEmailAndPassword(auth, email, password);
+      
+      // Redirect ke dashboard setelah login berhasil
+      navigate('/');
     } catch (err: any) {
-      setError('Login gagal: ' + (err.message || 'Periksa email dan password Anda'));
+      let errorMessage = 'Login gagal: ';
+      
+      // Menerjemahkan pesan error Firebase ke Bahasa Indonesia
+      switch (err.code) {
+        case 'auth/invalid-email':
+          errorMessage += 'Format email tidak valid';
+          break;
+        case 'auth/user-disabled':
+          errorMessage += 'Akun ini telah dinonaktifkan';
+          break;
+        case 'auth/user-not-found':
+          errorMessage += 'Email tidak terdaftar';
+          break;
+        case 'auth/wrong-password':
+          errorMessage += 'Password salah';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage += 'Terlalu banyak percobaan login. Silakan coba lagi nanti';
+          break;
+        default:
+          errorMessage += 'Periksa email dan password Anda';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -33,9 +83,9 @@ const Login = () => {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <img
-              src="https://mocha-cdn.com/0195bfc4-06ff-71af-bb75-b8fd467c9d72/logo-karta-cup-v.png"
+              className="mx-auto h-24 w-auto"
+              src="/images/logo-karta-cup-v.png"
               alt="KARTA CUP V Logo"
-              className="w-32 h-auto"
             />
           </div>
           <h1 className="text-2xl font-bold text-gray-800">BKU KARTA CUP V</h1>

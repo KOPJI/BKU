@@ -145,5 +145,35 @@ service cloud.firestore {
       // Tidak ada yang dapat mengubah atau menghapus log audit (untuk keamanan)
       allow update, delete: if false;
     }
+
+    // Aturan untuk koleksi tandaTerimaWasit
+    match /tandaTerimaWasit/{wasitId} {
+      // Fungsi validasi untuk tanda terima wasit
+      function isValidTandaTerimaWasit() {
+        let requiredFields = ['nomorKwitansi', 'tanggal', 'namaWasit', 'jumlah', 'createdBy'];
+        let data = request.resource.data;
+        
+        return data.keys().hasAll(requiredFields) &&
+               data.nomorKwitansi is string && data.nomorKwitansi.size() > 0 &&
+               data.tanggal is string && data.tanggal.size() > 0 &&
+               data.namaWasit is string && data.namaWasit.size() > 0 &&
+               data.jumlah is number && data.jumlah > 0 &&
+               data.createdBy is string && data.createdBy == request.auth.uid;
+      }
+
+      // Semua pengguna terautentikasi dapat membaca tanda terima wasit
+      allow read: if isAuthenticated();
+      
+      // Hanya pengguna terautentikasi yang dapat membuat tanda terima wasit baru dengan validasi
+      allow create: if isAuthenticated() && isValidTandaTerimaWasit();
+      
+      // Hanya pemilik atau admin yang dapat memperbarui tanda terima
+      allow update: if isAuthenticated() && 
+                     (isOwner(resource.data.createdBy) || isAdmin()) && 
+                     isValidTandaTerimaWasit();
+      
+      // Hanya admin yang dapat menghapus tanda terima
+      allow delete: if isAuthenticated() && isAdmin();
+    }
   }
 }

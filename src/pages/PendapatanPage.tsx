@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { CircleAlert, CirclePlus, Loader, Search } from 'lucide-react';
+import { getTodayIndonesia, formatDateIndonesia } from '../utils/dateHelper';
 
 interface Transaksi {
   id: string;
@@ -14,6 +15,7 @@ interface Transaksi {
 
 // Kategori pendapatan
 const kategoriPendapatan = [
+  'Pendaftaran Tim',
   'sponsor',
   'donasi',
   'kopi',
@@ -28,7 +30,7 @@ const PendapatanPage = () => {
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: getTodayIndonesia(),
     kategori: kategoriPendapatan[0],
     keteranganLainnya: '',
     jenis: 'pemasukan',
@@ -40,56 +42,62 @@ const PendapatanPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [totalPendapatan, setTotalPendapatan] = useState(0);
 
-  const fetchTransaksi = async () => {
-    if (!auth.currentUser) {
-      // Error handling tanpa console log
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Query untuk mendapatkan transaksi
-      let transaksiData: Transaksi[] = [];
-      
-      try {
-        const q = query(
-          collection(db, "transaksi"),
-          where("jenis", "==", "pemasukan"),
-          orderBy("tanggal", "desc"),
-          orderBy("__name__", "desc")
-        );
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-          transaksiData.push({ id: doc.id, ...doc.data() } as Transaksi);
-        });
-      } catch (indexErr: any) {
-        // Fallback query tanpa index
-        const q = query(
-          collection(db, "transaksi"),
-          where("jenis", "==", "pemasukan")
-        );
-        const querySnapshot = await getDocs(q);
-        transaksiData = querySnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Transaksi))
-          .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-      }
-
-      setTransaksi(transaksiData);
-      
-      // Hitung total
-      const total = transaksiData.reduce((sum, t) => sum + t.jumlah, 0);
-      setTotalPendapatan(total);
-    } catch (error) {
-      // Error handling tanpa console log
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        fetchTransaksi();
+        // Setup realtime listener
+        const setupRealtimeListener = () => {
+          try {
+            const q = query(
+              collection(db, "transaksi"),
+              where("jenis", "==", "pemasukan"),
+              orderBy("tanggal", "desc"),
+              orderBy("__name__", "desc")
+            );
+
+            const unsubscribeSnapshot = onSnapshot(q, (querySnapshot) => {
+              const transaksiData: Transaksi[] = [];
+              querySnapshot.forEach((doc) => {
+                transaksiData.push({ id: doc.id, ...doc.data() } as Transaksi);
+              });
+              setTransaksi(transaksiData);
+              
+              // Hitung total
+              const total = transaksiData.reduce((sum, t) => sum + t.jumlah, 0);
+              setTotalPendapatan(total);
+              setLoading(false);
+            }, (_) => {
+              // Handle error dengan fallback query
+              const fallbackQuery = query(
+                collection(db, "transaksi"),
+                where("jenis", "==", "pemasukan")
+              );
+
+              const unsubscribeFallback = onSnapshot(fallbackQuery, (snapshot) => {
+                const transaksiData = snapshot.docs
+                  .map(doc => ({ id: doc.id, ...doc.data() } as Transaksi))
+                  .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+                
+                setTransaksi(transaksiData);
+                const total = transaksiData.reduce((sum, t) => sum + t.jumlah, 0);
+                setTotalPendapatan(total);
+                setLoading(false);
+              });
+
+              return () => unsubscribeFallback();
+            });
+
+            return unsubscribeSnapshot;
+          } catch (error) {
+            setLoading(false);
+            return () => {};
+          }
+        };
+
+        const unsubscribeFirestore = setupRealtimeListener();
+        return () => {
+          unsubscribeFirestore();
+        };
       } else {
         setLoading(false);
         setError('Anda harus login terlebih dahulu untuk mengakses data');
@@ -97,6 +105,24 @@ const PendapatanPage = () => {
     });
     
     return () => unsubscribe();
+  }, []);
+
+  // Effect untuk memperbarui tanggal saat form dibuka
+  useEffect(() => {
+    if (isFormOpen) {
+      setFormData(prev => ({
+        ...prev,
+        tanggal: getTodayIndonesia()
+      }));
+    }
+  }, [isFormOpen]);
+
+  // Effect untuk memperbarui tanggal saat komponen dimount
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      tanggal: getTodayIndonesia()
+    }));
   }, []);
 
   const formatRupiah = (angka: number) => {
@@ -109,10 +135,24 @@ const PendapatanPage = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    if (name === 'jumlah') {
+      // Hapus semua karakter non-digit
+      const numericValue = value.replace(/[^\d]/g, '');
+      
+      // Format dengan titik sebagai pemisah ribuan
+      const formattedValue = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      
+      setFormData({
+        ...formData,
+        [name]: formattedValue
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,7 +160,6 @@ const PendapatanPage = () => {
     setSubmitLoading(true);
 
     const kategori = formData.kategori;
-    // Generate keterangan based on kategori
     let keterangan = kategori;
     if (kategori === 'lainnya' && formData.keteranganLainnya) {
       keterangan = formData.keteranganLainnya;
@@ -133,7 +172,6 @@ const PendapatanPage = () => {
     }
 
     try {
-      // Verify user is authenticated
       if (!auth.currentUser) {
         setError('Sesi login telah berakhir. Silakan login kembali.');
         setSubmitLoading(false);
@@ -148,10 +186,13 @@ const PendapatanPage = () => {
         return;
       }
 
+      // Cek jika keterangan mengandung kata "pendaftaran:"
+      const finalKategori = keterangan.toLowerCase().includes('pendaftaran:') ? 'Pendaftaran Tim' : kategori;
+
       await addDoc(collection(db, "transaksi"), {
         tanggal: formData.tanggal,
         keterangan: keterangan,
-        kategori: kategori,
+        kategori: finalKategori,
         jenis: "pemasukan",
         jumlah: numericJumlah,
         createdBy: auth.currentUser.uid,
@@ -160,7 +201,7 @@ const PendapatanPage = () => {
 
       // Reset form
       setFormData({
-        tanggal: new Date().toISOString().split('T')[0],
+        tanggal: getTodayIndonesia(),
         kategori: kategoriPendapatan[0],
         keteranganLainnya: '',
         jenis: 'pemasukan',
@@ -168,7 +209,6 @@ const PendapatanPage = () => {
       });
       
       setIsFormOpen(false);
-      fetchTransaksi(); // Refresh data
     } catch (error) {
       if (error instanceof Error && error.message.includes('permission-denied')) {
         setError('Anda tidak memiliki izin untuk menambahkan transaksi. Silakan login ulang atau hubungi administrator.');
@@ -323,7 +363,7 @@ const PendapatanPage = () => {
                   onChange={handleInputChange}
                   className="input-field"
                   required
-                  placeholder="Contoh: 100000"
+                  placeholder="Contoh: 100.000"
                 />
               </div>
               
@@ -386,22 +426,29 @@ const PendapatanPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {filteredTransaksi.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="py-3 px-4 text-sm text-gray-900 whitespace-nowrap">
-                          {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-900">
-                          {item.kategori || 'Umum'}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-900">
-                          {item.keterangan}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-right whitespace-nowrap font-medium text-green-600">
-                          {formatRupiah(item.jumlah)}
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredTransaksi.map((item) => {
+                      // Tentukan kategori berdasarkan keterangan
+                      const displayKategori = item.keterangan.toLowerCase().includes('pendaftaran:') 
+                        ? 'Pendaftaran Tim' 
+                        : (item.kategori || 'Umum');
+
+                      return (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm text-gray-900 whitespace-nowrap">
+                            {formatDateIndonesia(item.tanggal)}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-900">
+                            {displayKategori}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-900">
+                            {item.keterangan}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-right whitespace-nowrap font-medium text-green-600">
+                            {formatRupiah(item.jumlah)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

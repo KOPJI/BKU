@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { ArrowUpDown, Ban, ChartBar, Calendar, FileDown, Loader, Printer } from 'lucide-react';
+import { getTodayIndonesia, formatDateIndonesia } from '../utils/dateHelper';
+import { formatRupiah } from '../utils/formatRupiah';
 
 interface Transaksi {
   id: string;
@@ -9,16 +11,100 @@ interface Transaksi {
   keterangan: string;
   jenis: 'pemasukan' | 'pengeluaran';
   jumlah: number;
+  createdBy: string;
 }
 
 type LaporanPeriod = 'harian' | 'mingguan' | 'bulanan';
+
+interface PrintableReportProps {
+  transaksi: Transaksi[];
+  totalPemasukan: number;
+  totalPengeluaran: number;
+  selectedDate: string;
+  periodeTampilan: LaporanPeriod;
+}
+
+const PrintableReport = ({ transaksi, totalPemasukan, totalPengeluaran, selectedDate, periodeTampilan }: PrintableReportProps) => {
+  const getPeriodLabel = () => {
+    const date = new Date(selectedDate);
+    
+    switch (periodeTampilan) {
+      case 'harian':
+        return formatDateIndonesia(selectedDate);
+      case 'mingguan':
+        const day = date.getDay();
+        const sunday = new Date(date);
+        sunday.setDate(date.getDate() - day);
+        
+        const saturday = new Date(sunday);
+        saturday.setDate(sunday.getDate() + 6);
+        
+        return `${formatDateIndonesia(sunday.toISOString().split('T')[0])} - ${formatDateIndonesia(saturday.toISOString().split('T')[0])}`;
+      case 'bulanan':
+        return new Date(date).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      default:
+        return '';
+    }
+  };
+
+  return (
+    <div className="p-8">
+      <div className="flex items-center mb-6">
+        <img 
+          src="/images/logo-karta-cup-v.png" 
+          alt="KARTA CUP V Logo" 
+          className="w-16 h-auto mr-4"
+        />
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Laporan Keuangan KARTA CUP V</h1>
+          <p className="text-gray-600">Periode: {getPeriodLabel()}</p>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <p className="mb-1">Total Pemasukan: {formatRupiah(totalPemasukan)}</p>
+        <p className="mb-1">Total Pengeluaran: {formatRupiah(totalPengeluaran)}</p>
+        <p className="font-bold">Saldo: {formatRupiah(totalPemasukan - totalPengeluaran)}</p>
+      </div>
+
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            <th className="border p-2 bg-gray-50 text-left">Tanggal</th>
+            <th className="border p-2 bg-gray-50 text-left">Keterangan</th>
+            <th className="border p-2 bg-gray-50 text-left">Jenis</th>
+            <th className="border p-2 bg-gray-50 text-right">Jumlah</th>
+          </tr>
+        </thead>
+        <tbody>
+          {transaksi.map((item) => (
+            <tr key={item.id}>
+              <td className="border p-2">{formatDateIndonesia(item.tanggal)}</td>
+              <td className="border p-2">{item.keterangan}</td>
+              <td className="border p-2">{item.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}</td>
+              <td className="border p-2 text-right">
+                <span className={item.jenis === 'pemasukan' ? 'text-green-600' : 'text-red-600'}>
+                  {formatRupiah(item.jumlah)}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="mt-6 text-sm text-gray-500">
+        Dicetak pada: {formatDateIndonesia(getTodayIndonesia())} pukul {new Date().toLocaleTimeString('id-ID')}
+      </div>
+    </div>
+  );
+};
 
 const LaporanPage = () => {
   const [transaksi, setTransaksi] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPeriod, setCurrentPeriod] = useState<LaporanPeriod>('harian');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayIndonesia());
   const [summary, setSummary] = useState({
     totalPemasukan: 0,
     totalPengeluaran: 0,
@@ -27,7 +113,8 @@ const LaporanPage = () => {
 
   const fetchTransaksi = async () => {
     if (!auth.currentUser) {
-      // Error handling tanpa console log
+      setError('Anda harus login terlebih dahulu untuk mengakses data');
+      setLoading(false);
       return;
     }
 
@@ -38,75 +125,127 @@ const LaporanPage = () => {
       let startDate = new Date(selectedDate);
       let endDate = new Date(selectedDate);
       
-      // Adjust date range based on current period
+      // Sesuaikan range tanggal berdasarkan periode
       if (currentPeriod === 'harian') {
-        // For daily report, use the selected date
         endDate.setHours(23, 59, 59, 999);
       } else if (currentPeriod === 'mingguan') {
-        // For weekly report, get the week range (Sunday to Saturday)
         const day = startDate.getDay();
-        startDate.setDate(startDate.getDate() - day); // Go to Sunday
-        endDate.setDate(startDate.getDate() + 6); // Go to Saturday
+        startDate.setDate(startDate.getDate() - day); // Ke hari Minggu
+        endDate.setDate(startDate.getDate() + 6); // Ke hari Sabtu
         endDate.setHours(23, 59, 59, 999);
       } else if (currentPeriod === 'bulanan') {
-        // For monthly report, get the month range
-        startDate.setDate(1); // First day of month
-        endDate.setMonth(endDate.getMonth() + 1, 0); // Last day of month
+        startDate.setDate(1); // Hari pertama bulan
+        endDate.setMonth(endDate.getMonth() + 1, 0); // Hari terakhir bulan
         endDate.setHours(23, 59, 59, 999);
       }
       
-      // Format dates for Firestore query
+      // Format tanggal untuk query Firestore
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
-      
-      // Query transactions within date range
-      const q = query(
-        collection(db, "transaksi"),
-        where("tanggal", ">=", startDateStr),
-        where("tanggal", "<=", endDateStr),
-        orderBy("tanggal", "desc")
-      );
-      
-      const querySnapshot = await getDocs(q);
-      
-      const transaksiData: Transaksi[] = [];
-      let totalPemasukan = 0;
-      let totalPengeluaran = 0;
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        transaksiData.push({
-          id: doc.id,
-          tanggal: data.tanggal,
-          keterangan: data.keterangan,
-          jenis: data.jenis,
-          jumlah: data.jumlah
-        });
+
+      try {
+        // Coba query dengan composite index terlebih dahulu
+        const transaksiRef = collection(db, "transaksi");
+        const q = query(
+          transaksiRef,
+          where("createdBy", "==", auth.currentUser.uid),
+          orderBy("tanggal", "desc"),
+          where("tanggal", ">=", startDateStr),
+          where("tanggal", "<=", endDateStr)
+        );
         
-        // Calculate totals
-        if (data.jenis === 'pemasukan') {
-          totalPemasukan += data.jumlah;
+        const querySnapshot = await getDocs(q);
+        await processQueryResults(querySnapshot, startDateStr, endDateStr);
+      } catch (indexError: any) {
+        // Jika terjadi error karena index, gunakan query sederhana dengan filter manual
+        if (indexError.code === 'failed-precondition' || indexError.message?.includes('requires an index')) {
+          const transaksiRef = collection(db, "transaksi");
+          const simpleQuery = query(
+            transaksiRef,
+            where("createdBy", "==", auth.currentUser.uid),
+            orderBy("tanggal", "desc")
+          );
+          
+          const querySnapshot = await getDocs(simpleQuery);
+          await processQueryResults(querySnapshot, startDateStr, endDateStr, true);
         } else {
-          totalPengeluaran += data.jumlah;
+          throw indexError;
         }
-      });
-      
-      setTransaksi(transaksiData);
-      setSummary({
-        totalPemasukan,
-        totalPengeluaran,
-        saldo: totalPemasukan - totalPengeluaran
-      });
-      
+      }
     } catch (error: any) {
-      // Error handling tanpa console log
+      console.error('Error fetching data:', error);
+      if (error.code === 'permission-denied') {
+        setError('Anda tidak memiliki akses untuk melihat data ini');
+      } else if (error.code === 'failed-precondition') {
+        setError('Terjadi kesalahan pada pengaturan database');
+      } else if (error.code === 'unavailable') {
+        setError('Koneksi ke server terputus. Periksa koneksi internet Anda');
+      } else {
+        setError('Gagal memuat data. Silakan coba lagi nanti');
+      }
+      setTransaksi([]);
+      setSummary({
+        totalPemasukan: 0,
+        totalPengeluaran: 0,
+        saldo: 0
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const processQueryResults = async (
+    querySnapshot: any,
+    startDateStr: string,
+    endDateStr: string,
+    filterManually: boolean = false
+  ) => {
+    const transaksiData: Transaksi[] = [];
+    let totalPemasukan = 0;
+    let totalPengeluaran = 0;
+
+    if (querySnapshot.empty) {
+      setTransaksi([]);
+      setSummary({
+        totalPemasukan: 0,
+        totalPengeluaran: 0,
+        saldo: 0
+      });
+      return;
+    }
+
+    querySnapshot.forEach((doc: any) => {
+      const data = doc.data() as Transaksi;
+      if (!data.tanggal || !data.jumlah || !data.jenis) {
+        return; // Skip invalid data
+      }
+
+      // Jika filterManually true, filter data berdasarkan range tanggal
+      if (filterManually) {
+        if (data.tanggal < startDateStr || data.tanggal > endDateStr) {
+          return;
+        }
+      }
+
+      transaksiData.push({ ...data, id: doc.id });
+      if (data.jenis === 'pemasukan') {
+        totalPemasukan += data.jumlah;
+      } else {
+        totalPengeluaran += data.jumlah;
+      }
+    });
+
+    setTransaksi(transaksiData);
+    setSummary({
+      totalPemasukan,
+      totalPengeluaran,
+      saldo: totalPemasukan - totalPengeluaran
+    });
+  };
+
   useEffect(() => {
-    // Confirm we have authentication before fetching data
+    setSelectedDate(getTodayIndonesia());
+    
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         fetchTransaksi();
@@ -117,200 +256,41 @@ const LaporanPage = () => {
     });
     
     return () => unsubscribe();
+  }, []);
+
+  // Effect untuk memperbarui tanggal setiap kali halaman dibuka
+  useEffect(() => {
+    setSelectedDate(getTodayIndonesia());
+  }, []);
+
+  useEffect(() => {
+    if (auth.currentUser) {
+      fetchTransaksi();
+    }
   }, [currentPeriod, selectedDate]);
 
-  const formatRupiah = (angka: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(angka);
-  };
-  
-  const handlePeriodChange = (period: LaporanPeriod) => {
-    setCurrentPeriod(period);
-  };
-  
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedDate(e.target.value);
-  };
-  
-  const getPeriodLabel = () => {
-    const date = new Date(selectedDate);
-    
-    if (currentPeriod === 'harian') {
-      return new Date(selectedDate).toLocaleDateString('id-ID', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    } else if (currentPeriod === 'mingguan') {
-      const day = date.getDay();
-      const sunday = new Date(date);
-      sunday.setDate(date.getDate() - day);
-      
-      const saturday = new Date(sunday);
-      saturday.setDate(sunday.getDate() + 6);
-      
-      return `${sunday.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })} - ${saturday.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-    } else if (currentPeriod === 'bulanan') {
-      return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-    }
-    
-    return '';
-  };
-  
   const handlePrint = () => {
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Laporan ${currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1)} - ${getPeriodLabel()}</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #ddd;
-          }
-          .title {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 5px 0;
-          }
-          .subtitle {
-            font-size: 14px;
-            margin: 5px 0;
-          }
-          .summary {
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-          }
-          .summary-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #eee;
-          }
-          .summary-item.total {
-            font-weight: bold;
-            border-bottom: none;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px dashed #ccc;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-          }
-          th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-          }
-          th {
-            background-color: #f2f2f2;
-          }
-          tr:nth-child(even) {
-            background-color: #f9f9f9;
-          }
-          .footer {
-            margin-top: 30px;
-            text-align: right;
-            font-size: 12px;
-          }
-          .pemasukan {
-            color: #2e7d32;
-          }
-          .pengeluaran {
-            color: #c62828;
-          }
-          .logo {
-            height: 60px;
-            margin-bottom: 10px;
-          }
-          @media print {
-            button {
-              display: none;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <img src="https://mocha-cdn.com/0195bfc4-06ff-71af-bb75-b8fd467c9d72/logo-karta-cup-v.png" alt="KARTA CUP V Logo" class="logo">
-          <div class="title">LAPORAN ${currentPeriod.toUpperCase()} BKU KARTA CUP V</div>
-          <div class="subtitle">${getPeriodLabel()}</div>
-        </div>
-        
-        <div class="summary">
-          <div class="summary-item">
-            <span>Total Pemasukan:</span>
-            <span class="pemasukan">${formatRupiah(summary.totalPemasukan)}</span>
-          </div>
-          <div class="summary-item">
-            <span>Total Pengeluaran:</span>
-            <span class="pengeluaran">${formatRupiah(summary.totalPengeluaran)}</span>
-          </div>
-          <div class="summary-item total">
-            <span>Saldo:</span>
-            <span>${formatRupiah(summary.saldo)}</span>
-          </div>
-        </div>
-        
-        <table>
-          <thead>
-            <tr>
-              <th>Tanggal</th>
-              <th>Keterangan</th>
-              <th>Jenis</th>
-              <th>Jumlah</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${transaksi.map(item => `
-              <tr>
-                <td>${new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
-                <td>${item.keterangan}</td>
-                <td>${item.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}</td>
-                <td class="${item.jenis}">${formatRupiah(item.jumlah)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div class="footer">
-          <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}</p>
-        </div>
-        
-        <script>
-          window.onload = function() {
-            window.print();
-          }
-        </script>
-      </body>
-      </html>
-    `;
-    
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(printContent);
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Laporan Keuangan KARTA CUP V</title>
+            <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+          </head>
+          <body>
+            <div id="print-content">
+              ${document.getElementById('printable-content')?.innerHTML || ''}
+            </div>
+            <script>
+              window.onload = () => {
+                window.print();
+                window.onafterprint = () => window.close();
+              }
+            </script>
+          </body>
+        </html>
+      `);
       printWindow.document.close();
     }
   };
@@ -378,13 +358,13 @@ const LaporanPage = () => {
               id="date-picker"
               className="input-field"
               value={selectedDate}
-              onChange={handleDateChange}
+              onChange={(e) => setSelectedDate(e.target.value)}
             />
           </div>
           
           <div className="flex">
             <button
-              onClick={() => handlePeriodChange('harian')}
+              onClick={() => setCurrentPeriod('harian')}
               className={`flex items-center px-4 py-2 font-medium rounded-l-md ${
                 currentPeriod === 'harian' 
                   ? 'bg-[#ff5722] text-white' 
@@ -395,7 +375,7 @@ const LaporanPage = () => {
               Harian
             </button>
             <button
-              onClick={() => handlePeriodChange('mingguan')}
+              onClick={() => setCurrentPeriod('mingguan')}
               className={`flex items-center px-4 py-2 font-medium ${
                 currentPeriod === 'mingguan' 
                   ? 'bg-[#ff5722] text-white' 
@@ -406,7 +386,7 @@ const LaporanPage = () => {
               Mingguan
             </button>
             <button
-              onClick={() => handlePeriodChange('bulanan')}
+              onClick={() => setCurrentPeriod('bulanan')}
               className={`flex items-center px-4 py-2 font-medium rounded-r-md ${
                 currentPeriod === 'bulanan' 
                   ? 'bg-[#ff5722] text-white' 
@@ -420,7 +400,7 @@ const LaporanPage = () => {
         </div>
 
         <h2 className="text-lg font-semibold mb-6">
-          Laporan {currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1)}: {getPeriodLabel()}
+          Laporan {currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1)}: {formatDateIndonesia(selectedDate)}
         </h2>
 
         {/* Error display */}
@@ -501,7 +481,7 @@ const LaporanPage = () => {
                       {transaksi.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                            {formatDateIndonesia(item.tanggal)}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900">
                             {item.keterangan}
@@ -536,6 +516,16 @@ const LaporanPage = () => {
             </div>
           </>
         )}
+      </div>
+
+      <div id="printable-content">
+        <PrintableReport 
+          transaksi={transaksi}
+          totalPemasukan={summary.totalPemasukan}
+          totalPengeluaran={summary.totalPengeluaran}
+          selectedDate={selectedDate}
+          periodeTampilan={currentPeriod}
+        />
       </div>
     </div>
   );

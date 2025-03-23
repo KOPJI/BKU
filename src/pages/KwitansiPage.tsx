@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { CirclePlus, FileText, Loader, Printer, Search } from 'lucide-react';
+import { getTodayIndonesia } from '../utils/dateHelper';
 
 interface Kwitansi {
   id: string;
@@ -17,62 +18,83 @@ const KwitansiPage = () => {
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
-    nomor: '',
-    tanggal: new Date().toISOString().split('T')[0],
-    namaTim: '',
+    nomorKwitansi: '',
+    tanggal: getTodayIndonesia(),
+    namaTeam: '',
     nominal: '',
-    keterangan: 'Pendaftaran KARTA CUP V',
+    keterangan: '',
   });
   const [error, setError] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchKwitansi = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      // Check if user is authenticated
-      if (!auth.currentUser) {
-        console.error("User not authenticated");
-        setError('Anda harus login terlebih dahulu untuk mengakses data');
-        setLoading(false);
-        return;
-      }
-      
-      const q = query(collection(db, "kwitansi"), orderBy("tanggal", "desc"));
-      const querySnapshot = await getDocs(q);
-      
-      const kwitansiData: Kwitansi[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        kwitansiData.push({
-          id: doc.id,
-          nomor: data.nomor,
-          tanggal: data.tanggal,
-          namaTim: data.namaTim,
-          nominal: data.nominal,
-          keterangan: data.keterangan
-        });
-      });
-      
-      setKwitansi(kwitansiData);
-    } catch (error) {
-      console.error("Error mengambil data kwitansi:", error);
-      if (error instanceof Error && error.message.includes('permission-denied')) {
-        setError('Anda tidak memiliki izin untuk mengakses data kwitansi. Silakan login ulang atau hubungi administrator.');
-      } else {
-        setError('Gagal memuat data kwitansi. Silakan coba lagi nanti.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    // Confirm we have authentication before fetching data
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        fetchKwitansi();
+        // Setup realtime listener
+        const setupRealtimeListener = () => {
+          try {
+            const q = query(
+              collection(db, "kwitansi"),
+              orderBy("tanggal", "desc"),
+              orderBy("__name__", "desc")
+            );
+
+            const unsubscribeSnapshot = onSnapshot(q, (querySnapshot) => {
+              const kwitansiData: Kwitansi[] = [];
+              querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                kwitansiData.push({
+                  id: doc.id,
+                  nomor: data.nomor,
+                  tanggal: data.tanggal,
+                  namaTim: data.namaTim,
+                  nominal: data.nominal,
+                  keterangan: data.keterangan
+                });
+              });
+              setKwitansi(kwitansiData);
+              setLoading(false);
+            }, (_) => {
+              // Handle error dengan fallback query
+              const fallbackQuery = query(
+                collection(db, "kwitansi"),
+                orderBy("tanggal", "desc")
+              );
+
+              const unsubscribeFallback = onSnapshot(fallbackQuery, (snapshot) => {
+                const kwitansiData: Kwitansi[] = snapshot.docs
+                  .map(doc => {
+                    const data = doc.data();
+                    return {
+                      id: doc.id,
+                      nomor: data.nomor,
+                      tanggal: data.tanggal,
+                      namaTim: data.namaTim,
+                      nominal: data.nominal,
+                      keterangan: data.keterangan
+                    };
+                  })
+                  .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+                
+                setKwitansi(kwitansiData);
+                setLoading(false);
+              });
+
+              return () => unsubscribeFallback();
+            });
+
+            return unsubscribeSnapshot;
+          } catch (error) {
+            setLoading(false);
+            return () => {};
+          }
+        };
+
+        const unsubscribeFirestore = setupRealtimeListener();
+        return () => {
+          unsubscribeFirestore();
+        };
       } else {
         setLoading(false);
         setError('Anda harus login terlebih dahulu untuk mengakses data');
@@ -80,6 +102,24 @@ const KwitansiPage = () => {
     });
     
     return () => unsubscribe();
+  }, []);
+
+  // Effect untuk memperbarui tanggal saat form dibuka
+  useEffect(() => {
+    if (isFormOpen) {
+      setFormData(prev => ({
+        ...prev,
+        tanggal: getTodayIndonesia()
+      }));
+    }
+  }, [isFormOpen]);
+
+  // Effect untuk memperbarui tanggal saat komponen dimount
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      tanggal: getTodayIndonesia()
+    }));
   }, []);
 
   const formatRupiah = (angka: number) => {
@@ -148,27 +188,40 @@ const KwitansiPage = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    if (name === 'nominal') {
+      // Hapus semua karakter non-digit
+      const numericValue = value.replace(/[^\d]/g, '');
+      
+      // Format dengan titik sebagai pemisah ribuan
+      const formattedValue = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      
+      setFormData({
+        ...formData,
+        [name]: formattedValue
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const openForm = () => {
     setFormData({
       ...formData,
-      nomor: generateNomorKwitansi(),
-      tanggal: new Date().toISOString().split('T')[0],
+      nomorKwitansi: generateNomorKwitansi(),
+      tanggal: getTodayIndonesia(),
     });
     setIsFormOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setSubmitLoading(true);
 
-    if (!formData.nomor || !formData.namaTim || !formData.nominal) {
+    if (!formData.nomorKwitansi || !formData.namaTeam || !formData.nominal) {
       setError('Semua field wajib diisi');
       setSubmitLoading(false);
       return;
@@ -192,9 +245,9 @@ const KwitansiPage = () => {
 
       // Create kwitansi document with user ID
       const kwitansiData = {
-        nomor: formData.nomor,
+        nomor: formData.nomorKwitansi,
         tanggal: formData.tanggal,
-        namaTim: formData.namaTim,
+        namaTim: formData.namaTeam,
         nominal: numericNominal,
         keterangan: formData.keterangan,
         createdBy: auth.currentUser.uid,
@@ -207,10 +260,10 @@ const KwitansiPage = () => {
       // Tambahkan juga ke transaksi sebagai pendapatan
       await addDoc(collection(db, "transaksi"), {
         tanggal: formData.tanggal,
-        keterangan: `Pendaftaran: ${formData.namaTim}`,
+        keterangan: `Pendaftaran: ${formData.namaTeam}`,
         jenis: "pemasukan",
         jumlah: numericNominal,
-        nomor_kwitansi: formData.nomor,
+        nomor_kwitansi: formData.nomorKwitansi,
         createdBy: auth.currentUser.uid,
         kwitansiId: kwitansiRef.id,
         createdAt: serverTimestamp()
@@ -218,15 +271,14 @@ const KwitansiPage = () => {
 
       // Reset form
       setFormData({
-        nomor: '',
-        tanggal: new Date().toISOString().split('T')[0],
-        namaTim: '',
+        nomorKwitansi: '',
+        tanggal: getTodayIndonesia(),
+        namaTeam: '',
         nominal: '',
-        keterangan: 'Pendaftaran KARTA CUP V',
+        keterangan: '',
       });
       
       setIsFormOpen(false);
-      fetchKwitansi(); // Refresh data
     } catch (error) {
       if (error instanceof Error && error.message.includes('permission-denied')) {
         setError('Anda tidak memiliki izin untuk menambahkan kwitansi. Silakan login ulang atau hubungi administrator.');
@@ -648,14 +700,14 @@ const KwitansiPage = () => {
             
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
-                <label htmlFor="nomor" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="nomorKwitansi" className="block text-sm font-medium text-gray-700 mb-1">
                   Nomor Kwitansi
                 </label>
                 <input
                   type="text"
-                  id="nomor"
-                  name="nomor"
-                  value={formData.nomor}
+                  id="nomorKwitansi"
+                  name="nomorKwitansi"
+                  value={formData.nomorKwitansi}
                   onChange={handleInputChange}
                   className="input-field bg-gray-100"
                   required
@@ -680,14 +732,14 @@ const KwitansiPage = () => {
               </div>
               
               <div className="mb-4">
-                <label htmlFor="namaTim" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="namaTeam" className="block text-sm font-medium text-gray-700 mb-1">
                   Nama Tim/Peserta
                 </label>
                 <input
                   type="text"
-                  id="namaTim"
-                  name="namaTim"
-                  value={formData.namaTim}
+                  id="namaTeam"
+                  name="namaTeam"
+                  value={formData.namaTeam}
                   onChange={handleInputChange}
                   className="input-field"
                   required
@@ -707,7 +759,7 @@ const KwitansiPage = () => {
                   onChange={handleInputChange}
                   className="input-field"
                   required
-                  placeholder="Contoh: 100000"
+                  placeholder="Contoh: 100.000"
                 />
                 {formData.nominal && !isNaN(parseFloat(formData.nominal.replace(/[^\d]/g, ''))) && (
                   <p className="mt-1 text-xs text-gray-500">
