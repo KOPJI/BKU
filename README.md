@@ -1,97 +1,95 @@
-# BKU (Buku Kas Umum) - KARTA CUP V
+# BKU KARTA CUP V
 
-Aplikasi manajemen keuangan dan kwitansi untuk turnamen KARTA CUP V. Dibangun menggunakan React, TypeScript, dan Firebase.
+Aplikasi Buku Kas Umum Digital untuk KARTA CUP V - Sebuah aplikasi web untuk mengelola keuangan turnamen sepak bola.
 
-## Fitur
+## 🌟 Fitur Utama
 
-- 📊 Dashboard dengan ringkasan keuangan
-- 💰 Manajemen pemasukan dan pengeluaran
-- 🧾 Pembuatan dan pencetakan kwitansi otomatis
-- 📱 Responsif untuk semua ukuran layar
-- 🔒 Sistem autentikasi pengguna
-- 📄 Laporan keuangan
-- 🖨️ Cetak kwitansi dengan fitur keamanan
-- 🔍 Pencarian data transaksi dan kwitansi
+- 💰 Pencatatan Pemasukan dan Pengeluaran
+- 📊 Dashboard dengan Grafik Keuangan
+- 📄 Pembuatan Laporan Keuangan
+- 🧾 Pembuatan Kwitansi Digital
+- 📝 Tanda Terima Wasit Digital
+- 🔒 Sistem Autentikasi
+- 📱 Progressive Web App (PWA)
+- 🎨 Tampilan Responsif
 
-## Teknologi
+## 🛠️ Teknologi yang Digunakan
 
 - React + TypeScript
-- Firebase (Authentication & Firestore)
-- Tailwind CSS
 - Vite
-- Lucide Icons
+- Firebase (Authentication & Firestore)
+- TailwindCSS
+- Recharts
+- PWA
 
-## Persyaratan Sistem
+## 📋 Prasyarat
 
-- Node.js versi 14 atau lebih tinggi
-- NPM versi 6 atau lebih tinggi
-- Web browser modern
+Sebelum memulai, pastikan Anda telah menginstal:
 
-## Instalasi
+- Node.js (versi 14 atau lebih baru)
+- npm atau yarn
+- Git
 
-1. Clone repositori
+## 🚀 Cara Menjalankan Aplikasi
+
+1. Clone repository
 ```bash
-git clone [url-repositori]
+git clone https://github.com/KOPJI/BKU.git
 cd BKU
 ```
 
-2. Install dependensi
+2. Instal dependensi
 ```bash
 npm install
 ```
 
-3. Konfigurasi Firebase
-- Buat proyek di Firebase Console
-- Aktifkan Authentication dan Firestore
-- Salin konfigurasi Firebase ke file `.env`
+3. Salin file `.env.example` menjadi `.env` dan isi dengan konfigurasi Firebase Anda
+```bash
+cp .env.example .env
+```
 
-4. Jalankan aplikasi
+4. Jalankan aplikasi dalam mode development
 ```bash
 npm run dev
 ```
 
-## Struktur Proyek
+5. Buka browser dan akses `http://localhost:5173`
 
-```
-BKU/
-├── public/
-│   └── images/         # Gambar statis (logo, tanda tangan, dll)
-├── src/
-│   ├── components/     # Komponen React yang dapat digunakan kembali
-│   ├── pages/         # Halaman utama aplikasi
-│   ├── firebase.ts    # Konfigurasi Firebase
-│   └── App.tsx        # Komponen utama aplikasi
-├── package.json
-└── README.md
+## 📦 Build untuk Production
+
+```bash
+npm run build
 ```
 
-## Fitur Keamanan
+## 🌐 Deploy
 
-- Autentikasi pengguna
+Aplikasi ini dikonfigurasi untuk di-deploy ke Vercel. Untuk melakukan deploy:
+
+1. Push kode ke repository GitHub
+2. Hubungkan repository dengan Vercel
+3. Tambahkan environment variables di dashboard Vercel
+4. Deploy!
+
+## 📱 Fitur PWA
+
+Aplikasi ini mendukung Progressive Web App (PWA) dengan fitur:
+- Dapat diinstal di perangkat
+- Dapat diakses offline
+- Update otomatis
+- Responsif di semua perangkat
+
+## 🔐 Keamanan
+
+- Autentikasi menggunakan Firebase Auth
+- Enkripsi data sensitif
 - Validasi input
 - Proteksi rute
-- Fitur keamanan kwitansi:
-  - Watermark
-  - Micro text
-  - Guilloche pattern
-  - Serial number unik
+- Manajemen sesi
 
-## Penggunaan
+## 👥 Tim Pengembang
 
-1. Login menggunakan akun yang telah terdaftar
-2. Akses fitur melalui menu navigasi:
-   - Dashboard: Ringkasan keuangan
-   - Pemasukan: Catat dan kelola pemasukan
-   - Pengeluaran: Catat dan kelola pengeluaran
-   - Kwitansi: Buat dan cetak kwitansi
-   - Laporan: Lihat laporan keuangan
+- KOPJI Developer Team
 
-## Lisensi
+## 📄 Lisensi
 
-Hak Cipta © 2025 KARTA CUP V. Seluruh hak dilindungi.
-
-## Kontak
-
-Untuk pertanyaan dan dukungan, silakan hubungi:
-- Email: kartadesapangauban@gmail.com
-- WhatsApp: 0852 1234 0232
+Hak Cipta © 2025 KARTA CUP V. Seluruh hak cipta dilindungi undang-undang.
