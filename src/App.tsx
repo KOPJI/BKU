@@ -9,6 +9,7 @@ import PengeluaranPage from './pages/PengeluaranPage';
 import LaporanPage from './pages/LaporanPage';
 import KwitansiPage from './pages/KwitansiPage';
 import TandaTerimaWasit from './pages/TandaTerimaWasit';
+import ReloadPrompt from './components/ReloadPrompt'
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
           } />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+        <ReloadPrompt />
       </div>
     </AuthProvider>
   );

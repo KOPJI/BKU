@@ -14,7 +14,7 @@ interface Transaksi {
   createdBy: string;
 }
 
-type LaporanPeriod = 'harian' | 'mingguan' | 'bulanan';
+type LaporanPeriod = 'harian' | 'mingguan' | 'bulanan' | 'semua';
 
 interface PrintableReportProps {
   transaksi: Transaksi[];
@@ -124,40 +124,55 @@ const LaporanPage = () => {
     try {
       let startDate = new Date(selectedDate);
       let endDate = new Date(selectedDate);
+      let startDateStr = '2000-01-01'; // default value untuk 'semua'
+      let endDateStr = '2100-12-31';   // default value untuk 'semua'
       
       // Sesuaikan range tanggal berdasarkan periode
       if (currentPeriod === 'harian') {
         endDate.setHours(23, 59, 59, 999);
+        startDateStr = startDate.toISOString().split('T')[0];
+        endDateStr = endDate.toISOString().split('T')[0];
       } else if (currentPeriod === 'mingguan') {
         const day = startDate.getDay();
-        startDate.setDate(startDate.getDate() - day); // Ke hari Minggu
-        endDate.setDate(startDate.getDate() + 6); // Ke hari Sabtu
+        startDate.setDate(startDate.getDate() - day);
+        endDate.setDate(startDate.getDate() + 6);
         endDate.setHours(23, 59, 59, 999);
+        startDateStr = startDate.toISOString().split('T')[0];
+        endDateStr = endDate.toISOString().split('T')[0];
       } else if (currentPeriod === 'bulanan') {
-        startDate.setDate(1); // Hari pertama bulan
-        endDate.setMonth(endDate.getMonth() + 1, 0); // Hari terakhir bulan
+        startDate.setDate(1);
+        endDate.setMonth(endDate.getMonth() + 1, 0);
         endDate.setHours(23, 59, 59, 999);
+        startDateStr = startDate.toISOString().split('T')[0];
+        endDateStr = endDate.toISOString().split('T')[0];
       }
-      
-      // Format tanggal untuk query Firestore
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
+      // Jika currentPeriod === 'semua', gunakan nilai default yang sudah diset
 
       try {
-        // Coba query dengan composite index terlebih dahulu
         const transaksiRef = collection(db, "transaksi");
-        const q = query(
-          transaksiRef,
-          where("createdBy", "==", auth.currentUser.uid),
-          orderBy("tanggal", "desc"),
-          where("tanggal", ">=", startDateStr),
-          where("tanggal", "<=", endDateStr)
-        );
+        let q;
         
+        if (currentPeriod === 'semua') {
+          // Query tanpa filter tanggal untuk periode 'semua'
+          q = query(
+            transaksiRef,
+            where("createdBy", "==", auth.currentUser.uid),
+            orderBy("tanggal", "desc")
+          );
+        } else {
+          // Query dengan filter tanggal untuk periode lainnya
+          q = query(
+            transaksiRef,
+            where("createdBy", "==", auth.currentUser.uid),
+            orderBy("tanggal", "desc"),
+            where("tanggal", ">=", startDateStr),
+            where("tanggal", "<=", endDateStr)
+          );
+        }
+
         const querySnapshot = await getDocs(q);
         await processQueryResults(querySnapshot, startDateStr, endDateStr);
       } catch (indexError: any) {
-        // Jika terjadi error karena index, gunakan query sederhana dengan filter manual
         if (indexError.code === 'failed-precondition' || indexError.message?.includes('requires an index')) {
           const transaksiRef = collection(db, "transaksi");
           const simpleQuery = query(
@@ -174,15 +189,7 @@ const LaporanPage = () => {
       }
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      if (error.code === 'permission-denied') {
-        setError('Anda tidak memiliki akses untuk melihat data ini');
-      } else if (error.code === 'failed-precondition') {
-        setError('Terjadi kesalahan pada pengaturan database');
-      } else if (error.code === 'unavailable') {
-        setError('Koneksi ke server terputus. Periksa koneksi internet Anda');
-      } else {
-        setError('Gagal memuat data. Silakan coba lagi nanti');
-      }
+      setError('Terjadi kesalahan saat memuat data');
       setTransaksi([]);
       setSummary({
         totalPemasukan: 0,
@@ -323,134 +330,145 @@ const LaporanPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+    <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Laporan Keuangan</h1>
-          <p className="text-gray-600">Analisis data keuangan KARTA CUP V</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Laporan Keuangan</h1>
+          <p className="text-sm sm:text-base text-gray-600">Analisis data keuangan KARTA CUP V</p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-2">
+        <div className="mt-2 sm:mt-0 flex flex-col sm:flex-row gap-2 sm:gap-2 w-full sm:w-auto">
           <button
             onClick={handlePrint}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md flex items-center"
+            className="w-full sm:w-auto px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base font-medium rounded-md flex items-center justify-center"
           >
-            <Printer size={18} className="mr-1" />
+            <Printer size={16} className="mr-1" />
             Cetak
           </button>
           <button
             onClick={handleExportCSV}
-            className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md flex items-center"
+            className="w-full sm:w-auto px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base font-medium rounded-md flex items-center justify-center"
           >
-            <FileDown size={18} className="mr-1" />
+            <FileDown size={16} className="mr-1" />
             Export CSV
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center mb-6">
-          <div className="mb-4 md:mb-0 md:mr-6">
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="flex flex-col md:flex-row md:items-center mb-4 sm:mb-6">
+          <div className="mb-4 md:mb-0 md:mr-6 w-full sm:w-auto">
             <label htmlFor="date-picker" className="block text-sm font-medium text-gray-700 mb-1">
               Pilih Tanggal
             </label>
             <input
               type="date"
               id="date-picker"
-              className="input-field"
+              className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
           </div>
           
-          <div className="flex">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setCurrentPeriod('harian')}
-              className={`flex items-center px-4 py-2 font-medium rounded-l-md ${
+              className={`flex-1 sm:flex-none flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md ${
                 currentPeriod === 'harian' 
                   ? 'bg-[#ff5722] text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <Calendar size={18} className="mr-1" />
+              <Calendar size={16} className="mr-1 hidden sm:inline" />
               Harian
             </button>
             <button
               onClick={() => setCurrentPeriod('mingguan')}
-              className={`flex items-center px-4 py-2 font-medium ${
+              className={`flex-1 sm:flex-none flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md ${
                 currentPeriod === 'mingguan' 
                   ? 'bg-[#ff5722] text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <ChartBar size={18} className="mr-1" />
+              <ChartBar size={16} className="mr-1 hidden sm:inline" />
               Mingguan
             </button>
             <button
               onClick={() => setCurrentPeriod('bulanan')}
-              className={`flex items-center px-4 py-2 font-medium rounded-r-md ${
+              className={`flex-1 sm:flex-none flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md ${
                 currentPeriod === 'bulanan' 
                   ? 'bg-[#ff5722] text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <ChartBar size={18} className="mr-1" />
+              <ChartBar size={16} className="mr-1 hidden sm:inline" />
               Bulanan
+            </button>
+            <button
+              onClick={() => setCurrentPeriod('semua')}
+              className={`flex-1 sm:flex-none flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md ${
+                currentPeriod === 'semua' 
+                  ? 'bg-[#ff5722] text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <ChartBar size={16} className="mr-1 hidden sm:inline" />
+              Semua
             </button>
           </div>
         </div>
 
-        <h2 className="text-lg font-semibold mb-6">
+        <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">
           Laporan {currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1)}: {formatDateIndonesia(selectedDate)}
         </h2>
 
         {/* Error display */}
         {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 sm:p-4 mb-4 sm:mb-6 rounded text-sm sm:text-base">
             <p>{error}</p>
           </div>
         )}
 
         {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader className="animate-spin h-8 w-8 text-[#ff5722]" />
-            <span className="ml-2 text-gray-700">Memuat data laporan...</span>
+          <div className="flex justify-center items-center py-8 sm:py-12">
+            <Loader className="animate-spin h-6 w-6 sm:h-8 sm:w-8 text-[#ff5722]" />
+            <span className="ml-2 text-sm sm:text-base text-gray-700">Memuat data laporan...</span>
           </div>
         ) : (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border-l-4 border-green-500 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 sm:p-6 border-l-4 border-green-500 shadow-sm">
                 <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-green-500 bg-opacity-10">
-                    <ArrowUpDown className="h-8 w-8 text-green-500" />
+                  <div className="p-2 sm:p-3 rounded-full bg-green-500 bg-opacity-10">
+                    <ArrowUpDown className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-green-500">Total Pemasukan</p>
-                    <h3 className="text-xl font-semibold text-gray-800">{formatRupiah(summary.totalPemasukan)}</h3>
+                  <div className="ml-3 sm:ml-4">
+                    <p className="text-xs sm:text-sm font-medium text-green-500">Total Pemasukan</p>
+                    <h3 className="text-base sm:text-xl font-semibold text-gray-800">{formatRupiah(summary.totalPemasukan)}</h3>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-6 border-l-4 border-red-500 shadow-sm">
+              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 sm:p-6 border-l-4 border-red-500 shadow-sm">
                 <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-red-500 bg-opacity-10">
-                    <ArrowUpDown className="h-8 w-8 text-red-500" />
+                  <div className="p-2 sm:p-3 rounded-full bg-red-500 bg-opacity-10">
+                    <ArrowUpDown className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-red-500">Total Pengeluaran</p>
-                    <h3 className="text-xl font-semibold text-gray-800">{formatRupiah(summary.totalPengeluaran)}</h3>
+                  <div className="ml-3 sm:ml-4">
+                    <p className="text-xs sm:text-sm font-medium text-red-500">Total Pengeluaran</p>
+                    <h3 className="text-base sm:text-xl font-semibold text-gray-800">{formatRupiah(summary.totalPengeluaran)}</h3>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border-l-4 border-blue-500 shadow-sm">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 sm:p-6 border-l-4 border-blue-500 shadow-sm">
                 <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-blue-500 bg-opacity-10">
-                    <ChartBar className="h-8 w-8 text-blue-500" />
+                  <div className="p-2 sm:p-3 rounded-full bg-blue-500 bg-opacity-10">
+                    <ChartBar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-blue-500">Saldo</p>
-                    <h3 className="text-xl font-semibold text-gray-800">{formatRupiah(summary.saldo)}</h3>
+                  <div className="ml-3 sm:ml-4">
+                    <p className="text-xs sm:text-sm font-medium text-blue-500">Saldo</p>
+                    <h3 className="text-base sm:text-xl font-semibold text-gray-800">{formatRupiah(summary.saldo)}</h3>
                   </div>
                 </div>
               </div>
@@ -458,21 +476,21 @@ const LaporanPage = () => {
 
             {/* Transactions Table */}
             <div className="bg-white rounded-lg border border-gray-200">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
                 {transaksi.length > 0 ? (
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                           Tanggal
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                           Keterangan
                         </th>
-                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                           Jenis
                         </th>
-                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                           Jumlah
                         </th>
                       </tr>
@@ -480,15 +498,15 @@ const LaporanPage = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {transaksi.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                             {formatDateIndonesia(item.tanggal)}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
+                          <td className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-900">
                             {item.keterangan}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                          <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-center">
                             <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                 item.jenis === 'pemasukan'
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-red-100 text-red-800'
@@ -497,7 +515,7 @@ const LaporanPage = () => {
                               {item.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
                             </span>
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
+                          <td className={`px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-right ${
                             item.jenis === 'pemasukan' ? 'text-green-600' : 'text-red-600'
                           }`}>
                             {formatRupiah(item.jumlah)}
@@ -507,9 +525,9 @@ const LaporanPage = () => {
                     </tbody>
                   </table>
                 ) : (
-                  <div className="text-center py-10 flex flex-col items-center justify-center text-gray-500">
-                    <Ban size={40} className="mb-2 text-gray-400" />
-                    <p>Tidak ada transaksi pada periode ini</p>
+                  <div className="text-center py-6 sm:py-8 flex flex-col items-center justify-center text-gray-500">
+                    <Ban size={24} className="mb-2 text-gray-400" />
+                    <p className="text-sm sm:text-base">Tidak ada transaksi pada periode ini</p>
                   </div>
                 )}
               </div>
@@ -518,7 +536,7 @@ const LaporanPage = () => {
         )}
       </div>
 
-      <div id="printable-content">
+      <div id="printable-content" className="hidden">
         <PrintableReport 
           transaksi={transaksi}
           totalPemasukan={summary.totalPemasukan}

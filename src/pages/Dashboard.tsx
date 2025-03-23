@@ -25,7 +25,7 @@ interface ChartData {
   pengeluaran: number;
 }
 
-type PeriodeTampilan = 'harian' | 'mingguan' | 'bulanan';
+type PeriodeTampilan = 'harian' | 'mingguan' | 'bulanan' | 'semua';
 
 interface PrintableReportProps {
   transaksi: Transaksi[];
@@ -128,7 +128,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [transaksiData, setTransaksiData] = useState<Transaksi[]>([]);
-  const [periodeTampilan, setPeriodeTampilan] = useState<PeriodeTampilan>('harian');
+  const [periodeTampilan, setPeriodeTampilan] = useState<PeriodeTampilan>('semua');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayIndonesia());
   const [totalPendapatan, setTotalPendapatan] = useState(0);
 
@@ -144,40 +144,55 @@ const Dashboard = () => {
 
       let startDate = new Date(selectedDate);
       let endDate = new Date(selectedDate);
+      let startDateStr = '2000-01-01'; // default value untuk 'semua'
+      let endDateStr = '2100-12-31';   // default value untuk 'semua'
       
       // Sesuaikan range tanggal berdasarkan periode
       if (periodeTampilan === 'harian') {
         endDate.setHours(23, 59, 59, 999);
+        startDateStr = startDate.toISOString().split('T')[0];
+        endDateStr = endDate.toISOString().split('T')[0];
       } else if (periodeTampilan === 'mingguan') {
         const day = startDate.getDay();
-        startDate.setDate(startDate.getDate() - day); // Ke hari Minggu
-        endDate.setDate(startDate.getDate() + 6); // Ke hari Sabtu
+        startDate.setDate(startDate.getDate() - day);
+        endDate.setDate(startDate.getDate() + 6);
         endDate.setHours(23, 59, 59, 999);
+        startDateStr = startDate.toISOString().split('T')[0];
+        endDateStr = endDate.toISOString().split('T')[0];
       } else if (periodeTampilan === 'bulanan') {
-        startDate.setDate(1); // Hari pertama bulan
-        endDate.setMonth(endDate.getMonth() + 1, 0); // Hari terakhir bulan
+        startDate.setDate(1);
+        endDate.setMonth(endDate.getMonth() + 1, 0);
         endDate.setHours(23, 59, 59, 999);
+        startDateStr = startDate.toISOString().split('T')[0];
+        endDateStr = endDate.toISOString().split('T')[0];
       }
-      
-      // Format tanggal untuk query Firestore
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
+      // Jika periodeTampilan === 'semua', gunakan nilai default yang sudah diset
 
       try {
-        // Coba query dengan composite index terlebih dahulu
         const transaksiRef = collection(db, "transaksi");
-        const q = query(
-          transaksiRef,
-          where("createdBy", "==", auth.currentUser.uid),
-          orderBy("tanggal", "desc"),
-          where("tanggal", ">=", startDateStr),
-          where("tanggal", "<=", endDateStr)
-        );
+        let q;
+        
+        if (periodeTampilan === 'semua') {
+          // Query tanpa filter tanggal untuk periode 'semua'
+          q = query(
+            transaksiRef,
+            where("createdBy", "==", auth.currentUser.uid),
+            orderBy("tanggal", "desc")
+          );
+        } else {
+          // Query dengan filter tanggal untuk periode lainnya
+          q = query(
+            transaksiRef,
+            where("createdBy", "==", auth.currentUser.uid),
+            orderBy("tanggal", "desc"),
+            where("tanggal", ">=", startDateStr),
+            where("tanggal", "<=", endDateStr)
+          );
+        }
         
         const querySnapshot = await getDocs(q);
         await processQueryResults(querySnapshot, startDateStr, endDateStr);
       } catch (indexError: any) {
-        // Jika terjadi error karena index, gunakan query sederhana dengan filter manual
         if (indexError.code === 'failed-precondition' || indexError.message?.includes('requires an index')) {
           const transaksiRef = collection(db, "transaksi");
           const simpleQuery = query(
@@ -203,7 +218,6 @@ const Dashboard = () => {
       } else {
         setError('Gagal memuat data. Silakan coba lagi nanti');
       }
-      // Reset data jika terjadi error
       setChartData([]);
       setTotalPemasukan(0);
       setTotalPengeluaran(0);
@@ -317,28 +331,6 @@ const Dashboard = () => {
     );
   };
 
-  const getPeriodLabel = () => {
-    const date = new Date(selectedDate);
-    
-    switch (periodeTampilan) {
-      case 'harian':
-        return formatDateIndonesia(selectedDate);
-      case 'mingguan':
-        const day = date.getDay();
-        const sunday = new Date(date);
-        sunday.setDate(date.getDate() - day);
-        
-        const saturday = new Date(sunday);
-        saturday.setDate(sunday.getDate() + 6);
-        
-        return `${formatDateIndonesia(sunday.toISOString().split('T')[0])} - ${formatDateIndonesia(saturday.toISOString().split('T')[0])}`;
-      case 'bulanan':
-        return new Date(date).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-      default:
-        return '';
-    }
-  };
-
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -372,6 +364,7 @@ const Dashboard = () => {
   // Effect untuk memperbarui tanggal saat komponen dimount
   useEffect(() => {
     setSelectedDate(getTodayIndonesia());
+    setPeriodeTampilan('semua'); // Set default periode ke 'semua'
   }, []);
 
   if (loading) {
@@ -384,231 +377,288 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard BKU KARTA CUP V</h1>
-          <p className="text-gray-600">Periode: {getPeriodLabel()}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Dashboard BKU KARTA CUP V</h1>
+          <p className="text-sm sm:text-base text-gray-600">Periode: Semua</p>
         </div>
         <button
           onClick={handlePrint}
-          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md flex items-center"
+          className="mt-2 sm:mt-0 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base font-medium rounded-md flex items-center"
         >
-          <Printer size={18} className="mr-1" />
+          <Printer size={16} className="mr-1" />
           Cetak
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 sm:p-4 mb-4 sm:mb-6 rounded text-sm sm:text-base">
           <p>{error}</p>
         </div>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
         <div className="card bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-500 bg-opacity-10">
-              <ArrowUp10 className="h-8 w-8 text-green-500" />
+          <div className="flex items-center p-4 sm:p-6">
+            <div className="p-2 sm:p-3 rounded-full bg-green-500 bg-opacity-10">
+              <ArrowUp10 className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-green-500">Total Pemasukan</p>
-              <h3 className="text-xl font-semibold text-gray-800">{formatRupiah(totalPemasukan)}</h3>
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm font-medium text-green-500">Total Pemasukan</p>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-800">{formatRupiah(totalPemasukan)}</h3>
             </div>
           </div>
         </div>
         
         <div className="card bg-gradient-to-br from-red-50 to-red-100 border-l-4 border-red-500">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-red-500 bg-opacity-10">
-              <CircleArrowDown className="h-8 w-8 text-red-500" />
+          <div className="flex items-center p-4 sm:p-6">
+            <div className="p-2 sm:p-3 rounded-full bg-red-500 bg-opacity-10">
+              <CircleArrowDown className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-red-500">Total Pengeluaran</p>
-              <h3 className="text-xl font-semibold text-gray-800">{formatRupiah(totalPengeluaran)}</h3>
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm font-medium text-red-500">Total Pengeluaran</p>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-800">{formatRupiah(totalPengeluaran)}</h3>
             </div>
           </div>
         </div>
         
         <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-500">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-500 bg-opacity-10">
-              <TrendingUp className="h-8 w-8 text-blue-500" />
+          <div className="flex items-center p-4 sm:p-6">
+            <div className="p-2 sm:p-3 rounded-full bg-blue-500 bg-opacity-10">
+              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-blue-500">Saldo</p>
-              <h3 className="text-xl font-semibold text-gray-800">{formatRupiah(saldo)}</h3>
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm font-medium text-blue-500">Saldo</p>
+              <h3 className="text-base sm:text-xl font-semibold text-gray-800">{formatRupiah(saldo)}</h3>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Area Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+        {/* Area Chart untuk Trend */}
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">
             Trend Transaksi
           </h2>
 
-          <div className="flex flex-col md:flex-row md:items-center mb-6">
-            <div className="mb-4 md:mb-0 md:mr-6">
-              <input
-                type="date"
-                className="input-field"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
-        </div>
-
-            <div className="flex rounded-lg overflow-hidden border border-gray-200">
-              <button
-                onClick={() => setPeriodeTampilan('harian')}
-                className={`px-4 py-2 text-sm font-medium transition-colors duration-150 ${
-                  periodeTampilan === 'harian' 
-                    ? 'bg-[#ff5722] text-white' 
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Harian
-              </button>
-              <button
-                onClick={() => setPeriodeTampilan('mingguan')}
-                className={`px-4 py-2 text-sm font-medium border-l border-r border-gray-200 transition-colors duration-150 ${
-                  periodeTampilan === 'mingguan' 
-                    ? 'bg-[#ff5722] text-white' 
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Mingguan
-              </button>
-              <button
-                onClick={() => setPeriodeTampilan('bulanan')}
-                className={`px-4 py-2 text-sm font-medium transition-colors duration-150 ${
-                  periodeTampilan === 'bulanan' 
-                    ? 'bg-[#ff5722] text-white' 
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Bulanan
-              </button>
-            </div>
-          </div>
-
           {chartData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[300px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <Ban className="h-12 w-12 text-gray-400 mb-2" />
-              <p className="text-gray-500 text-center">
+            <div className="flex flex-col items-center justify-center h-[250px] sm:h-[300px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <Ban className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mb-2" />
+              <p className="text-sm sm:text-base text-gray-500 text-center">
                 Tidak ada data transaksi
-                <br />
-                <span className="text-sm">Silakan pilih periode lain</span>
               </p>
             </div>
           ) : (
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={chartData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="colorPemasukan" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#4CAF50" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorPengeluaran" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f44336" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#f44336" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: '#666', fontSize: 12 }}
-                    tickFormatter={(value) => value}
-                    axisLine={{ stroke: '#E0E0E0' }}
-                  />
-                  <YAxis
-                    tick={{ fill: '#666', fontSize: 12 }}
-                    tickFormatter={(value) => `${formatRupiah(value)}`}
-                    axisLine={{ stroke: '#E0E0E0' }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="pemasukan"
-                    name="Pemasukan"
-                    stroke="#4CAF50"
-                    fill="url(#colorPemasukan)"
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="pengeluaran"
-                    name="Pengeluaran"
-                    stroke="#f44336"
-                    fill="url(#colorPengeluaran)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <>
+              <div className="h-[250px] sm:h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorPemasukan" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#4CAF50" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorPengeluaran" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f44336" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#f44336" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: '#666', fontSize: 12 }}
+                      tickFormatter={(value) => value}
+                      axisLine={{ stroke: '#E0E0E0' }}
+                    />
+                    <YAxis
+                      tick={{ fill: '#666', fontSize: 12 }}
+                      tickFormatter={(value) => `${formatRupiah(value)}`}
+                      axisLine={{ stroke: '#E0E0E0' }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="pemasukan"
+                      name="Pemasukan"
+                      stroke="#4CAF50"
+                      fill="url(#colorPemasukan)"
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="pengeluaran"
+                      name="Pengeluaran"
+                      stroke="#f44336"
+                      fill="url(#colorPengeluaran)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Ringkasan Trend */}
+              {chartData.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-3 sm:p-4 rounded-lg bg-green-50 border border-green-100">
+                    <p className="text-xs sm:text-sm font-medium text-green-600 mb-1">Total Pemasukan</p>
+                    <p className="text-base sm:text-lg font-semibold text-green-700">{formatRupiah(totalPemasukan)}</p>
+                    <p className="text-xs text-green-500 mt-1">Seluruh periode</p>
+                  </div>
+                  <div className="p-3 sm:p-4 rounded-lg bg-red-50 border border-red-100">
+                    <p className="text-xs sm:text-sm font-medium text-red-600 mb-1">Total Pengeluaran</p>
+                    <p className="text-base sm:text-lg font-semibold text-red-700">{formatRupiah(totalPengeluaran)}</p>
+                    <p className="text-xs text-red-500 mt-1">Seluruh periode</p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        {/* Bar Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+        {/* Bar Chart untuk Perbandingan */}
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">
             Perbandingan Transaksi
           </h2>
           
           {chartData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[300px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <Ban className="h-12 w-12 text-gray-400 mb-2" />
-              <p className="text-gray-500 text-center">
+            <div className="flex flex-col items-center justify-center h-[250px] sm:h-[300px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <Ban className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mb-2" />
+              <p className="text-sm sm:text-base text-gray-500 text-center">
                 Tidak ada data transaksi
-                <br />
-                <span className="text-sm">Silakan pilih periode lain</span>
               </p>
-          </div>
-        ) : (
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: '#666', fontSize: 12 }}
-                    tickFormatter={(value) => value}
-                    axisLine={{ stroke: '#E0E0E0' }}
-                  />
-                  <YAxis
-                    tick={{ fill: '#666', fontSize: 12 }}
-                    tickFormatter={(value) => `${formatRupiah(value)}`}
-                    axisLine={{ stroke: '#E0E0E0' }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Bar
-                    dataKey="pemasukan"
-                    name="Pemasukan"
-                    fill="#4CAF50"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="pengeluaran"
-                    name="Pengeluaran"
-                    fill="#f44336"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-          </div>
-        )}
+            </div>
+          ) : (
+            <>
+              <div className="h-[250px] sm:h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: '#666', fontSize: 12 }}
+                      tickFormatter={(value) => value}
+                      axisLine={{ stroke: '#E0E0E0' }}
+                    />
+                    <YAxis
+                      tick={{ fill: '#666', fontSize: 12 }}
+                      tickFormatter={(value) => `${formatRupiah(value)}`}
+                      axisLine={{ stroke: '#E0E0E0' }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Bar
+                      dataKey="pemasukan"
+                      name="Pemasukan"
+                      fill="#4CAF50"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="pengeluaran"
+                      name="Pengeluaran"
+                      fill="#f44336"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Ringkasan Perbandingan */}
+              <div className="mt-4">
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-green-600 mb-1">Pemasukan</p>
+                      <p className="text-lg font-semibold text-green-700">{formatRupiah(totalPemasukan)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-red-600 mb-1">Pengeluaran</p>
+                      <p className="text-lg font-semibold text-red-700">{formatRupiah(totalPengeluaran)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-blue-600 mb-1">Selisih</p>
+                      <p className="text-lg font-semibold text-blue-700">{formatRupiah(saldo)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Tabel Transaksi */}
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">
+          Daftar Transaksi
+        </h2>
+
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          {transaksiData.length > 0 ? (
+            <div className="inline-block min-w-full align-middle">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
+                      Tanggal
+                    </th>
+                    <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
+                      Keterangan
+                    </th>
+                    <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
+                      Jenis
+                    </th>
+                    <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
+                      Jumlah
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {transaksiData.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                        {formatDateIndonesia(item.tanggal)}
+                      </td>
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-900">
+                        {item.keterangan}
+                      </td>
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-center">
+                        <span
+                          className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            item.jenis === 'pemasukan'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {item.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                        </span>
+                      </td>
+                      <td className={`px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-right ${
+                        item.jenis === 'pemasukan' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {formatRupiah(item.jumlah)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 sm:py-10 flex flex-col items-center justify-center text-gray-500">
+              <Ban size={32} className="mb-2 text-gray-400" />
+              <p className="text-sm sm:text-base">Tidak ada transaksi pada periode ini</p>
+            </div>
+          )}
         </div>
       </div>
 

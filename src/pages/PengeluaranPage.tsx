@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, addDoc, serverTimestamp, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { CirclePlus, Loader, Search, Squircle } from 'lucide-react';
+import { CirclePlus, Loader, Search, CircleAlert } from 'lucide-react';
 import { getTodayIndonesia, formatDateIndonesia } from '../utils/dateHelper';
 
 interface Transaksi {
@@ -227,32 +227,32 @@ const PengeluaranPage = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+    <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Data Pengeluaran</h1>
-          <p className="text-gray-600">Kelola semua transaksi pengeluaran</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Data Pengeluaran</h1>
+          <p className="text-sm sm:text-base text-gray-600">Kelola semua transaksi pengeluaran</p>
         </div>
         <button
           onClick={() => setIsFormOpen(true)}
-          className="btn-primary mt-4 sm:mt-0 flex items-center"
+          className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-2 bg-[#ff5722] text-white rounded-lg hover:bg-[#f4511e] flex items-center justify-center text-sm sm:text-base"
         >
-          <CirclePlus size={20} className="mr-2" />
+          <CirclePlus size={16} className="mr-2" />
           Tambah Pengeluaran
         </button>
       </div>
 
       {/* Error display */}
       {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 sm:p-4 mb-4 sm:mb-6 rounded text-sm sm:text-base">
           <p>{error}</p>
         </div>
       )}
 
       {/* Index Error Warning */}
       {indexError && (
-        <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 mb-6 rounded flex">
-          <Squircle className="h-6 w-6 mr-3 flex-shrink-0" />
+        <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-3 sm:p-4 mb-4 sm:mb-6 rounded flex text-sm sm:text-base">
+          <CircleAlert className="h-5 w-5 sm:h-6 sm:w-6 mr-2 sm:mr-3 flex-shrink-0" />
           <div>
             <p className="font-medium">Perhatian: Dibutuhkan Indeks Database</p>
             <p className="mt-1">Data mungkin tidak lengkap karena membutuhkan pengaturan indeks Firestore.</p>
@@ -271,14 +271,14 @@ const PengeluaranPage = () => {
       )}
 
       {/* Search bar */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
+            <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#ff5722] focus:border-[#ff5722] sm:text-sm"
+            className="block w-full pl-10 pr-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#ff5722] focus:border-[#ff5722]"
             placeholder="Cari pengeluaran..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -287,12 +287,12 @@ const PengeluaranPage = () => {
       </div>
 
       {isFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md my-8">
-            <h2 className="text-xl font-semibold mb-4">Tambah Pengeluaran Baru</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md my-4 sm:my-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Tambah Pengeluaran Baru</h2>
             
             {error && (
-              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
+              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 sm:p-4 mb-4 rounded text-sm sm:text-base">
                 <p>{error}</p>
               </div>
             )}
@@ -308,7 +308,7 @@ const PengeluaranPage = () => {
                   name="tanggal"
                   value={formData.tanggal}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff5722] focus:border-[#ff5722]"
                   required
                 />
               </div>
@@ -322,7 +322,7 @@ const PengeluaranPage = () => {
                   name="kategori"
                   value={formData.kategori}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff5722] focus:border-[#ff5722]"
                   required
                 >
                   {kategoriPengeluaran.map((kat) => (
@@ -344,7 +344,7 @@ const PengeluaranPage = () => {
                     name="keteranganLainnya"
                     value={formData.keteranganLainnya}
                     onChange={handleInputChange}
-                    className="input-field"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff5722] focus:border-[#ff5722]"
                     required={formData.kategori === 'lainnya'}
                     placeholder="Masukkan keterangan pengeluaran"
                   />
@@ -361,24 +361,24 @@ const PengeluaranPage = () => {
                   name="jumlah"
                   value={formData.jumlah}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff5722] focus:border-[#ff5722]"
                   required
                   placeholder="Contoh: 100.000"
                 />
               </div>
               
-              <div className="flex flex-wrap justify-end gap-3">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
+                  className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 order-2 sm:order-1"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={submitLoading}
-                  className="btn-primary w-full sm:w-auto"
+                  className="w-full sm:w-auto px-4 py-2 bg-[#ff5722] text-white rounded-lg hover:bg-[#f4511e] text-sm font-medium order-1 sm:order-2"
                 >
                   {submitLoading ? (
                     <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" />
@@ -393,34 +393,34 @@ const PengeluaranPage = () => {
       )}
 
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader className="animate-spin h-8 w-8 text-[#ff5722]" />
-          <span className="ml-2 text-gray-700">Memuat data pengeluaran...</span>
+        <div className="flex justify-center items-center py-8 sm:py-12">
+          <Loader className="animate-spin h-6 w-6 sm:h-8 sm:w-8 text-[#ff5722]" />
+          <span className="ml-2 text-sm sm:text-base text-gray-700">Memuat data pengeluaran...</span>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Total Pengeluaran Card */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">Total Pengeluaran</h2>
-            <p className="text-2xl font-bold text-red-600">{formatRupiah(totalPengeluaran)}</p>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">Total Pengeluaran</h2>
+            <p className="text-xl sm:text-2xl font-bold text-red-600">{formatRupiah(totalPengeluaran)}</p>
           </div>
 
-          <div className="card overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-hidden">
             {filteredTransaksi.length > 0 ? (
-              <div className="overflow-x-auto -mx-6 -my-4 sm:mx-0 sm:my-0">
+              <div className="overflow-x-auto">
                 <table className="min-w-full bg-white">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="py-2 px-3 sm:py-3 sm:px-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                         Tanggal
                       </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="py-2 px-3 sm:py-3 sm:px-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                         Kategori
                       </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="py-2 px-3 sm:py-3 sm:px-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                         Keterangan
                       </th>
-                      <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="py-2 px-3 sm:py-3 sm:px-4 text-right text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                         Jumlah
                       </th>
                     </tr>
@@ -428,16 +428,16 @@ const PengeluaranPage = () => {
                   <tbody className="divide-y divide-gray-200">
                     {filteredTransaksi.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="py-3 px-4 text-sm text-gray-900 whitespace-nowrap">
+                        <td className="py-2 px-3 sm:py-3 sm:px-4 text-xs sm:text-sm text-gray-900 whitespace-nowrap">
                           {formatDateIndonesia(item.tanggal)}
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-900">
+                        <td className="py-2 px-3 sm:py-3 sm:px-4 text-xs sm:text-sm text-gray-900">
                           {item.kategori || 'Umum'}
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-900">
+                        <td className="py-2 px-3 sm:py-3 sm:px-4 text-xs sm:text-sm text-gray-900">
                           {item.keterangan}
                         </td>
-                        <td className="py-3 px-4 text-sm text-right whitespace-nowrap font-medium text-red-600">
+                        <td className="py-2 px-3 sm:py-3 sm:px-4 text-xs sm:text-sm text-right whitespace-nowrap font-medium text-red-600">
                           {formatRupiah(item.jumlah)}
                         </td>
                       </tr>
@@ -446,8 +446,10 @@ const PengeluaranPage = () => {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                {searchQuery ? 'Tidak ada pengeluaran yang cocok dengan pencarian' : 'Belum ada pengeluaran tercatat'}
+              <div className="text-center py-8 sm:py-12">
+                <div className="text-gray-500 text-sm sm:text-base">
+                  {searchQuery ? 'Tidak ada pengeluaran yang cocok dengan pencarian' : 'Belum ada pengeluaran tercatat'}
+                </div>
               </div>
             )}
           </div>

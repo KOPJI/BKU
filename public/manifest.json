@@ -1,0 +1,66 @@
+{
+  "name": "BKU KARTA CUP V",
+  "short_name": "BKU",
+  "description": "Aplikasi Buku Kas Umum KARTA CUP V",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ff5722",
+  "icons": [
+    {
+      "src": "/windows11/Square44x44Logo.scale-100.png",
+      "sizes": "44x44",
+      "type": "image/png"
+    },
+    {
+      "src": "/windows11/Square150x150Logo.scale-100.png",
+      "sizes": "150x150",
+      "type": "image/png"
+    },
+    {
+      "src": "/windows11/Square150x150Logo.scale-200.png",
+      "sizes": "300x300",
+      "type": "image/png"
+    },
+    {
+      "src": "/android/android-launchericon-192-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android/android-launchericon-512-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/android/android-launchericon-maskable-192-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/android/android-launchericon-maskable-512-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/windows11/LargeTile.scale-200.png",
+      "sizes": "620x620",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard BKU KARTA CUP V - Desktop"
+    },
+    {
+      "src": "/windows11/Square150x150Logo.scale-400.png",
+      "sizes": "600x600",
+      "type": "image/png",
+      "label": "Dashboard BKU KARTA CUP V - Mobile"
+    }
+  ],
+  "categories": ["finance", "utilities"],
+  "prefer_related_applications": false
+} 
