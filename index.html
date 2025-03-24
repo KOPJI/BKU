@@ -44,6 +44,103 @@
       .mocha-watermark {
         display: none !important;
       }
+
+      /* Optimasi tampilan cetak */
+      @media print {
+        /* Pengaturan umum */
+        body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          background: #fff !important;
+        }
+
+        /* Pastikan konten muat di halaman */
+        * {
+          box-sizing: border-box;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        /* Optimasi tabel */
+        table {
+          width: 100% !important;
+          font-size: 10pt !important;
+          page-break-inside: auto !important;
+        }
+
+        tr {
+          page-break-inside: avoid !important;
+          page-break-after: auto !important;
+        }
+
+        /* Optimasi gambar */
+        img {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+
+        /* Sembunyikan elemen yang tidak perlu dicetak */
+        .no-print,
+        button:not(.print-show),
+        nav,
+        footer {
+          display: none !important;
+        }
+
+        /* Pengaturan margin dan padding untuk mobile */
+        @page {
+          margin: 0.5cm;
+          size: auto;
+        }
+
+        /* Optimasi font dan spacing */
+        p, h1, h2, h3, h4, h5, h6 {
+          orphans: 3;
+          widows: 3;
+          page-break-after: avoid;
+        }
+
+        /* Optimasi warna dan kontras */
+        * {
+          color: #000 !important;
+          text-shadow: none !important;
+          background: transparent !important;
+        }
+
+        /* Tampilkan URL di samping link */
+        a[href^="http"]:after {
+          content: " (" attr(href) ")";
+          font-size: 90%;
+        }
+
+        /* Pengaturan khusus untuk kwitansi dan tanda terima */
+        .print-container {
+          width: 100% !important;
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 10px !important;
+        }
+
+        /* Pastikan header kwitansi terlihat jelas */
+        .print-header {
+          margin-bottom: 15px !important;
+        }
+
+        /* Optimasi ukuran font untuk mobile */
+        .print-title {
+          font-size: 14pt !important;
+        }
+        .print-subtitle {
+          font-size: 12pt !important;
+        }
+        .print-content {
+          font-size: 10pt !important;
+        }
+        .print-footer {
+          font-size: 9pt !important;
+        }
+      }
     </style>
     
     <title>BKU KARTA CUP V</title>
