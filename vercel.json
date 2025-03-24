@@ -42,12 +42,6 @@
       ]
     }
   ],
-  "functions": {
-    "api/*": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "regions": ["sin1"],
   "public": true,
   "github": {
