@@ -190,7 +190,6 @@ const TandaTerimaWasit = () => {
   };
 
   const handlePrint = () => {
-    // Generate unique document ID with timestamp and random string
     const timestamp = new Date().getTime();
     const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
     const uniqueDocId = `TRW-${timestamp}-${randomStr}`;
@@ -201,21 +200,56 @@ const TandaTerimaWasit = () => {
         <html>
           <head>
             <title>Tanda Terima Wasit - KARTA CUP V</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
             <style>
               @media print {
-                body {
-                  padding: 20px;
+                @page {
+                  size: auto;
+                  margin: 0;
                 }
-                .no-print {
-                  display: none;
+                body {
+                  margin: 0;
+                  padding: 15px;
+                }
+                .print-container {
+                  width: 100% !important;
+                  max-width: none !important;
+                  margin: 0 !important;
+                  padding: 10px !important;
+                }
+                img {
+                  max-width: 100% !important;
+                  height: auto !important;
+                }
+                .no-break {
+                  page-break-inside: avoid !important;
+                }
+              }
+              @media print and (max-width: 767px) {
+                body {
+                  padding: 5px;
+                  font-size: 12px;
+                }
+                .print-container {
+                  padding: 5px !important;
+                }
+                img {
+                  max-width: 80px !important;
+                }
+                h2 {
+                  font-size: 14px !important;
+                }
+                p {
+                  font-size: 12px !important;
+                  margin: 4px 0 !important;
                 }
               }
             </style>
           </head>
           <body>
-            <div class="max-w-2xl mx-auto p-8 bg-white">
-              <div class="flex items-center justify-between mb-6">
+            <div class="print-container max-w-2xl mx-auto bg-white">
+              <div class="no-break flex items-center justify-between mb-6">
                 <img src="/images/logo-karta-cup-v.png" alt="KARTA CUP V Logo" class="w-24 h-auto"/>
                 <div class="text-right">
                   <h2 class="text-xl font-bold">TANDA TERIMA</h2>
@@ -224,24 +258,24 @@ const TandaTerimaWasit = () => {
               </div>
 
               <div class="mb-8">
-                <div class="border-b pb-4">
+                <div class="no-break border-b pb-4">
                   <p class="mb-1">Telah diterima dari:</p>
                   <p class="font-semibold text-lg">Panitia KARTA CUP V</p>
                 </div>
 
-                <div class="border-b py-4">
+                <div class="no-break border-b py-4">
                   <p class="mb-1">Uang Sejumlah:</p>
                   <p class="font-semibold text-lg">${formatRupiah(formData.jumlah)}</p>
                   <p class="text-gray-600 text-sm italic">Terbilang: ${terbilang(formData.jumlah)} rupiah</p>
                 </div>
 
-                <div class="border-b py-4">
+                <div class="no-break border-b py-4">
                   <p class="mb-1">Untuk Pembayaran:</p>
                   <p class="font-semibold">Honor Wasit Utama Turnamen Sepak Bola Karta Cup V</p>
                 </div>
               </div>
 
-              <div class="flex justify-between mt-8">
+              <div class="no-break flex justify-between mt-8">
                 <div class="text-center relative">
                   <p class="mt-6">Penyetor</p>
                   <img src="/images/ttd-panitia.png" alt="Tanda Tangan Panitia" class="w-32 h-auto absolute left-4 top-14"/>
@@ -284,21 +318,56 @@ const TandaTerimaWasit = () => {
         <html>
           <head>
             <title>Tanda Terima Wasit - KARTA CUP V</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
             <style>
               @media print {
-                body {
-                  padding: 20px;
+                @page {
+                  size: auto;
+                  margin: 0;
                 }
-                .no-print {
-                  display: none;
+                body {
+                  margin: 0;
+                  padding: 15px;
+                }
+                .print-container {
+                  width: 100% !important;
+                  max-width: none !important;
+                  margin: 0 !important;
+                  padding: 10px !important;
+                }
+                img {
+                  max-width: 100% !important;
+                  height: auto !important;
+                }
+                .no-break {
+                  page-break-inside: avoid !important;
+                }
+              }
+              @media print and (max-width: 767px) {
+                body {
+                  padding: 5px;
+                  font-size: 12px;
+                }
+                .print-container {
+                  padding: 5px !important;
+                }
+                img {
+                  max-width: 80px !important;
+                }
+                h2 {
+                  font-size: 14px !important;
+                }
+                p {
+                  font-size: 12px !important;
+                  margin: 4px 0 !important;
                 }
               }
             </style>
           </head>
           <body>
-            <div class="max-w-2xl mx-auto p-8 bg-white">
-              <div class="flex items-center justify-between mb-6">
+            <div class="print-container max-w-2xl mx-auto bg-white">
+              <div class="no-break flex items-center justify-between mb-6">
                 <img src="/images/logo-karta-cup-v.png" alt="KARTA CUP V Logo" class="w-24 h-auto"/>
                 <div class="text-right">
                   <h2 class="text-xl font-bold">TANDA TERIMA</h2>
@@ -307,24 +376,24 @@ const TandaTerimaWasit = () => {
               </div>
 
               <div class="mb-8">
-                <div class="border-b pb-4">
+                <div class="no-break border-b pb-4">
                   <p class="mb-1">Telah diterima dari:</p>
                   <p class="font-semibold text-lg">Panitia KARTA CUP V</p>
                 </div>
 
-                <div class="border-b py-4">
+                <div class="no-break border-b py-4">
                   <p class="mb-1">Uang Sejumlah:</p>
                   <p class="font-semibold text-lg">${formatRupiah(item.jumlah)}</p>
                   <p class="text-gray-600 text-sm italic">Terbilang: ${terbilang(item.jumlah)} rupiah</p>
                 </div>
 
-                <div class="border-b py-4">
+                <div class="no-break border-b py-4">
                   <p class="mb-1">Untuk Pembayaran:</p>
                   <p class="font-semibold">Honor Wasit Utama Turnamen Sepak Bola Karta Cup V</p>
                 </div>
               </div>
 
-              <div class="flex justify-between mt-8">
+              <div class="no-break flex justify-between mt-8">
                 <div class="text-center relative">
                   <p class="mt-6">Penyetor</p>
                   <img src="/images/ttd-panitia.png" alt="Tanda Tangan Panitia" class="w-32 h-auto absolute left-4 top-14"/>

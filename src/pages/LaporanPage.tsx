@@ -282,11 +282,70 @@ const LaporanPage = () => {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Laporan Keuangan KARTA CUP V</title>
+            <title>Laporan Keuangan - KARTA CUP V</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+            <style>
+              @media print {
+                @page {
+                  size: auto;
+                  margin: 0;
+                }
+                body {
+                  margin: 0;
+                  padding: 15px;
+                }
+                .print-container {
+                  width: 100% !important;
+                  max-width: none !important;
+                  margin: 0 !important;
+                  padding: 10px !important;
+                }
+                table {
+                  width: 100% !important;
+                  font-size: 10pt !important;
+                  page-break-inside: auto !important;
+                }
+                tr {
+                  page-break-inside: avoid !important;
+                }
+                img {
+                  max-width: 100% !important;
+                  height: auto !important;
+                }
+                .no-break {
+                  page-break-inside: avoid !important;
+                }
+              }
+              @media print and (max-width: 767px) {
+                body {
+                  padding: 5px;
+                  font-size: 12px;
+                }
+                .print-container {
+                  padding: 5px !important;
+                }
+                img {
+                  max-width: 80px !important;
+                }
+                table {
+                  font-size: 9pt !important;
+                }
+                th, td {
+                  padding: 4px !important;
+                }
+                h2 {
+                  font-size: 14px !important;
+                }
+                p {
+                  font-size: 12px !important;
+                  margin: 4px 0 !important;
+                }
+              }
+            </style>
           </head>
           <body>
-            <div id="print-content">
+            <div class="print-container">
               ${document.getElementById('printable-content')?.innerHTML || ''}
             </div>
             <script>

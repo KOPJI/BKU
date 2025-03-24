@@ -141,6 +141,77 @@
           font-size: 9pt !important;
         }
       }
+
+      /* Optimasi tampilan cetak untuk mobile */
+      @media print and (max-width: 767px) {
+        /* Pengaturan halaman khusus mobile */
+        @page {
+          size: auto;
+          margin: 5mm;
+        }
+
+        /* Pengaturan konten */
+        body {
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          font-size: 12px !important;
+        }
+
+        /* Optimasi tabel untuk mobile */
+        table {
+          width: 100% !important;
+          font-size: 10px !important;
+          table-layout: fixed !important;
+        }
+
+        th, td {
+          padding: 2px !important;
+          word-wrap: break-word !important;
+        }
+
+        /* Optimasi gambar untuk mobile */
+        img {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+
+        /* Pengaturan khusus untuk kwitansi dan tanda terima */
+        .print-container {
+          padding: 5px !important;
+        }
+
+        .print-header {
+          margin-bottom: 10px !important;
+        }
+
+        .print-title {
+          font-size: 12pt !important;
+        }
+
+        .print-subtitle {
+          font-size: 10pt !important;
+        }
+
+        .print-content {
+          font-size: 9pt !important;
+        }
+
+        .print-footer {
+          font-size: 8pt !important;
+        }
+
+        /* Pengaturan untuk menghindari pemisahan konten */
+        .no-break {
+          page-break-inside: avoid !important;
+        }
+
+        /* Pengaturan untuk memastikan konten terlihat jelas */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
     </style>
     
     <title>BKU KARTA CUP V</title>
