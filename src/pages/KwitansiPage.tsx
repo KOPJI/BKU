@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { CirclePlus, FileText, Loader, Printer, Search } from 'lucide-react';
+import { Plus, FileText, Loader, Printer, Search } from 'lucide-react';
 import { getTodayIndonesia } from '../utils/dateHelper';
 
 interface Kwitansi {
@@ -659,7 +659,7 @@ const KwitansiPage = () => {
           onClick={openForm}
           className="btn-primary mt-4 sm:mt-0 flex items-center"
         >
-          <CirclePlus size={20} className="mr-2" />
+          <Plus size={20} className="mr-2" />
           Buat Kwitansi Baru
         </button>
       </div>

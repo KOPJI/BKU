@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, query, orderBy, getDocs, where, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { ArrowUp10, CircleArrowDown, Loader, TrendingUp, Ban, Printer } from 'lucide-react';
+import { ArrowUp10, ArrowDown, Loader, TrendingUp, Ban, Printer } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts';
 import { getTodayIndonesia, formatDateIndonesia } from '../utils/dateHelper';
 import { formatRupiah } from '../utils/formatRupiah';
@@ -483,7 +483,7 @@ const Dashboard = () => {
         <div className="card bg-gradient-to-br from-red-50 to-red-100 border-l-4 border-red-500">
           <div className="flex items-center p-4 sm:p-6">
             <div className="p-2 sm:p-3 rounded-full bg-red-500 bg-opacity-10">
-              <CircleArrowDown className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
+              <ArrowDown className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
             </div>
             <div className="ml-3 sm:ml-4">
               <p className="text-xs sm:text-sm font-medium text-red-500">Total Pengeluaran</p>

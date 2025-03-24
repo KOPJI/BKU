@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { ArrowUpDown, Ban, ChartBar, Calendar, FileDown, Loader, Printer } from 'lucide-react';
+import { BarChart2, Ban, Calendar, FileDown, Loader, Printer } from 'lucide-react';
 import { getTodayIndonesia, formatDateIndonesia } from '../utils/dateHelper';
 import { formatRupiah } from '../utils/formatRupiah';
 
@@ -448,7 +448,7 @@ const LaporanPage = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <ChartBar size={16} className="mr-1 hidden sm:inline" />
+              <BarChart2 size={16} className="mr-1 hidden sm:inline" />
               Mingguan
             </button>
             <button
@@ -459,7 +459,7 @@ const LaporanPage = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <ChartBar size={16} className="mr-1 hidden sm:inline" />
+              <BarChart2 size={16} className="mr-1 hidden sm:inline" />
               Bulanan
             </button>
             <button
@@ -470,7 +470,7 @@ const LaporanPage = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <ChartBar size={16} className="mr-1 hidden sm:inline" />
+              <BarChart2 size={16} className="mr-1 hidden sm:inline" />
               Semua
             </button>
           </div>
@@ -499,7 +499,7 @@ const LaporanPage = () => {
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 sm:p-6 border-l-4 border-green-500 shadow-sm">
                 <div className="flex items-center">
                   <div className="p-2 sm:p-3 rounded-full bg-green-500 bg-opacity-10">
-                    <ArrowUpDown className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
+                    <BarChart2 className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
                   </div>
                   <div className="ml-3 sm:ml-4">
                     <p className="text-xs sm:text-sm font-medium text-green-500">Total Pemasukan</p>
@@ -511,7 +511,7 @@ const LaporanPage = () => {
               <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 sm:p-6 border-l-4 border-red-500 shadow-sm">
                 <div className="flex items-center">
                   <div className="p-2 sm:p-3 rounded-full bg-red-500 bg-opacity-10">
-                    <ArrowUpDown className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
+                    <BarChart2 className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
                   </div>
                   <div className="ml-3 sm:ml-4">
                     <p className="text-xs sm:text-sm font-medium text-red-500">Total Pengeluaran</p>
@@ -523,7 +523,7 @@ const LaporanPage = () => {
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 sm:p-6 border-l-4 border-blue-500 shadow-sm">
                 <div className="flex items-center">
                   <div className="p-2 sm:p-3 rounded-full bg-blue-500 bg-opacity-10">
-                    <ChartBar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
+                    <BarChart2 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
                   </div>
                   <div className="ml-3 sm:ml-4">
                     <p className="text-xs sm:text-sm font-medium text-blue-500">Saldo</p>

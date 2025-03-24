@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, addDoc, serverTimestamp, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { CirclePlus, Loader, Search, CircleAlert } from 'lucide-react';
+import { AlertCircle, Plus, Search, Loader } from 'lucide-react';
 import { getTodayIndonesia, formatDateIndonesia } from '../utils/dateHelper';
 
 interface Transaksi {
@@ -237,7 +237,7 @@ const PengeluaranPage = () => {
           onClick={() => setIsFormOpen(true)}
           className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-2 bg-[#ff5722] text-white rounded-lg hover:bg-[#f4511e] flex items-center justify-center text-sm sm:text-base"
         >
-          <CirclePlus size={16} className="mr-2" />
+          <Plus size={16} className="mr-2" />
           Tambah Pengeluaran
         </button>
       </div>
@@ -252,7 +252,7 @@ const PengeluaranPage = () => {
       {/* Index Error Warning */}
       {indexError && (
         <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-3 sm:p-4 mb-4 sm:mb-6 rounded flex text-sm sm:text-base">
-          <CircleAlert className="h-5 w-5 sm:h-6 sm:w-6 mr-2 sm:mr-3 flex-shrink-0" />
+          <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 mr-2 sm:mr-3 flex-shrink-0" />
           <div>
             <p className="font-medium">Perhatian: Dibutuhkan Indeks Database</p>
             <p className="mt-1">Data mungkin tidak lengkap karena membutuhkan pengaturan indeks Firestore.</p>

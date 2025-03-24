@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Download, Loader, CirclePlus, Search, Upload } from 'lucide-react';
+import { Plus, Search, Loader, Upload, Download } from 'lucide-react';
 
 interface Transaksi {
   id: string;
@@ -132,7 +132,7 @@ const TransaksiPage = () => {
           onClick={() => setIsFormOpen(true)}
           className="btn-primary mt-4 sm:mt-0 flex items-center"
         >
-          <CirclePlus size={20} className="mr-2" />
+          <Plus size={20} className="mr-2" />
           Tambah Transaksi
         </button>
       </div>
